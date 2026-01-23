@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CB INCIDENT - Details</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="background-layer background-layer--darker">
+    <img src="/shibuya.png" alt="">
+  </div>
+  <div class="overlay overlay--darker"></div>
+  <div class="red-glow red-glow--subtle"></div>
+  <div class="scanlines"></div>
+
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+
+  <div class="invitation-container invitation-container--padded">
+    <div class="content content--wider">
+      <div class="page-header">CB INCIDENT</div>
+      <div class="page-subheader">// The Details //</div>
+
+      <div class="rules-box">
+        <div class="rules-title">🎮 MINI-GAME BATTLE*</div>
+        <div class="rules-text">
+          Form teams of 2 for the showdown. Flying solo? No problem — you'll be paired with another lone wolf.
+          <br><br>
+          <span class="highlight">5 Games</span> → <span class="highlight">1 Final</span> → Top 2 teams battle it out!
+          <br><br>
+          No clear top 2? <span class="highlight">Tiebreaker Quiz</span> decides who advances!
+          <br><br>
+          🕐 <span class="highlight">Games start at 22:30</span> — titles announced 30 min before!
+        </div>
+      </div>
+
+      <div class="rules-box">
+        <div class="rules-title">🎵 MUSIC</div>
+        <div class="rules-text">
+          A shared Spotify playlist drops <span class="highlight">3 days before</span> the event — add your bangers and let's vibe together!
+        </div>
+      </div>
+
+      <div class="rules-box">
+        <div class="rules-title">🎟️ HOW TO JOIN</div>
+        <div class="rules-text">
+          <span class="highlight">No entry fee!</span>
+          <br><br>
+          Just message me that you want to participate. Got a team name? Let me know!
+        </div>
+      </div>
+
+      <div class="footer-tagline footer-tagline--larger">
+        <a href="index.html" class="back-link">← Back to Main</a>
+      </div>
+
+      <div class="footer-countdown">
+        <span class="footer-label">SEE YOU THERE IN</span>
+        <div class="countdown-row" id="countdown">
+          <div class="cd-block">
+            <span class="cd-val" id="days">00</span>
+            <span class="cd-unit">D</span>
+          </div>
+          <span class="cd-sep">:</span>
+          <div class="cd-block">
+            <span class="cd-val" id="hours">00</span>
+            <span class="cd-unit">H</span>
+          </div>
+          <span class="cd-sep">:</span>
+          <div class="cd-block">
+            <span class="cd-val" id="minutes">00</span>
+            <span class="cd-unit">M</span>
+          </div>
+          <span class="cd-sep">:</span>
+          <div class="cd-block">
+            <span class="cd-val" id="seconds">00</span>
+            <span class="cd-unit">S</span>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const eventDate = new Date('2026-02-07T20:30:00').getTime();
+
+          const daysEl = document.getElementById('days');
+          const hoursEl = document.getElementById('hours');
+          const minutesEl = document.getElementById('minutes');
+          const secondsEl = document.getElementById('seconds');
+
+          function updateCountdown() {
+            const now = Date.now();
+            const diff = Math.max(0, eventDate - now);
+
+            const days = Math.floor(diff / 86400000);
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            daysEl.textContent = String(days).padStart(2, '0');
+            hoursEl.textContent = String(hours).padStart(2, '0');
+            minutesEl.textContent = String(minutes).padStart(2, '0');
+            secondsEl.textContent = String(seconds).padStart(2, '0');
+          }
+
+          updateCountdown();
+          setInterval(updateCountdown, 1000);
+        });
+      </script>
+    </div>
+  </div>
+</body>
+</html>
