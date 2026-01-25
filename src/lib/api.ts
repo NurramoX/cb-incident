@@ -3,12 +3,25 @@ import { makePersisted } from '@solid-primitives/storage'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string
 
 if (!SUPABASE_URL) {
   throw new Error('Missing VITE_SUPABASE_URL environment variable')
 }
 
-// ============ Edge Function Calls (no auth required) ============
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error('Missing VITE_SUPABASE_PUBLISHABLE_KEY environment variable')
+}
+
+// Base client for auth operations (no user token needed)
+const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+})
+
+// ============ Edge Function Calls (for registration with token validation) ============
 
 interface ApiResponse<T> {
   data?: T
@@ -38,7 +51,7 @@ async function callEdgeFunction<T>(
   }
 }
 
-// Registration
+// Registration (still uses edge function for token validation)
 export interface RegisterInput {
   name: string
   surname: string
@@ -61,35 +74,6 @@ export async function register(input: RegisterInput): Promise<ApiResponse<Regist
   return callEdgeFunction<RegisterResponse>('register', input)
 }
 
-// Login
-export interface LoginInput {
-  email: string
-  password: string
-}
-
-export interface LoginResponse {
-  message: string
-  user: {
-    id: string
-    email: string
-  }
-  session: {
-    access_token: string
-    refresh_token: string
-    expires_at: number
-  }
-}
-
-export async function login(input: LoginInput): Promise<ApiResponse<LoginResponse>> {
-  const result = await callEdgeFunction<LoginResponse>('login', input)
-
-  if (result.data?.session) {
-    saveTokens(result.data.session.access_token, result.data.session.refresh_token)
-  }
-
-  return result
-}
-
 // ============ Session Management ============
 
 const [accessToken, setAccessToken] = makePersisted(createSignal<string | null>(null), {
@@ -100,9 +84,20 @@ const [refreshToken, setRefreshToken] = makePersisted(createSignal<string | null
   name: 'cb_refresh_token',
 })
 
-function saveTokens(newAccessToken: string, newRefreshToken: string) {
+const [expiresAt, setExpiresAt] = makePersisted(createSignal<number | null>(null), {
+  name: 'cb_expires_at',
+})
+
+function saveSession(newAccessToken: string, newRefreshToken: string, newExpiresAt: number) {
   setAccessToken(newAccessToken)
   setRefreshToken(newRefreshToken)
+  setExpiresAt(newExpiresAt)
+}
+
+function clearSession() {
+  setAccessToken(null)
+  setRefreshToken(null)
+  setExpiresAt(null)
 }
 
 export function getAccessToken(): string | null {
@@ -113,34 +108,105 @@ export function getRefreshToken(): string | null {
   return refreshToken()
 }
 
-function clearTokens() {
-  setAccessToken(null)
-  setRefreshToken(null)
-}
-
 export function isAuthenticated(): boolean {
   return !!accessToken()
 }
 
+function isTokenExpired(): boolean {
+  const exp = expiresAt()
+  if (!exp) return true
+  // Consider expired 60 seconds before actual expiry
+  return Date.now() / 1000 > exp - 60
+}
+
 // Export reactive signal for components
 export { accessToken }
+
+// ============ Auth Operations ============
+
+export interface LoginInput {
+  email: string
+  password: string
+}
+
+export async function login(input: LoginInput): Promise<ApiResponse<{ userId: string }>> {
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({
+    email: input.email,
+    password: input.password,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  if (data.session) {
+    saveSession(
+      data.session.access_token,
+      data.session.refresh_token,
+      data.session.expires_at ?? 0
+    )
+  }
+
+  return { data: { userId: data.user.id } }
+}
+
+export async function refreshSession(): Promise<boolean> {
+  const token = refreshToken()
+  if (!token) return false
+
+  const { data, error } = await supabaseAuth.auth.refreshSession({
+    refresh_token: token,
+  })
+
+  if (error || !data.session) {
+    clearSession()
+    return false
+  }
+
+  saveSession(
+    data.session.access_token,
+    data.session.refresh_token,
+    data.session.expires_at ?? 0
+  )
+
+  return true
+}
+
+export function logout() {
+  clearSession()
+  clearSupabaseClient()
+}
 
 // ============ Authenticated Supabase Client ============
 
 let supabaseClient: SupabaseClient | null = null
 let cachedToken: string | null = null
 
-export function getSupabaseClient(): SupabaseClient {
+async function ensureValidToken(): Promise<string> {
   const token = accessToken()
 
   if (!token) {
     throw new Error('Not authenticated')
   }
 
+  if (isTokenExpired()) {
+    const refreshed = await refreshSession()
+    if (!refreshed) {
+      throw new Error('Session expired')
+    }
+    return accessToken()!
+  }
+
+  return token
+}
+
+export async function getSupabaseClient(): Promise<SupabaseClient> {
+  const token = await ensureValidToken()
+
   // Recreate client if token changed
   if (!supabaseClient || cachedToken !== token) {
     cachedToken = token
-    supabaseClient = createClient(SUPABASE_URL, '', {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -161,7 +227,24 @@ function clearSupabaseClient() {
   cachedToken = null
 }
 
-export function logout() {
-  clearTokens()
-  clearSupabaseClient()
+// ============ Data Fetching ============
+
+export interface Profile {
+  id: string
+  name: string
+  surname: string
+}
+
+export async function fetchProfiles(): Promise<Profile[]> {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, name, surname')
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as Profile[]
 }

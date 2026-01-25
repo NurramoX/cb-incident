@@ -1,33 +1,29 @@
-import { createSignal } from 'solid-js'
-import { A, useNavigate } from '@solidjs/router'
-import { login } from '../../lib/api'
+import { action, useSubmission, A, redirect, useNavigate } from '@solidjs/router'
+import { onMount } from 'solid-js'
+import { login, isAuthenticated } from '../../lib/api'
+
+const loginAction = action(async (formData: FormData) => {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+
+  const result = await login({ email, password })
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  throw redirect('/game/dashboard')
+}, 'login')
 
 export default function Login() {
   const navigate = useNavigate()
+  const submission = useSubmission(loginAction)
 
-  const [email, setEmail] = createSignal('')
-  const [password, setPassword] = createSignal('')
-  const [error, setError] = createSignal('')
-  const [loading, setLoading] = createSignal(false)
-
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    const result = await login({
-      email: email(),
-      password: password(),
-    })
-
-    if (result.data) {
+  onMount(() => {
+    if (isAuthenticated()) {
       navigate('/game/dashboard')
-    } else {
-      setError(result.error || 'Login failed')
     }
-
-    setLoading(false)
-  }
+  })
 
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center justify-center p-4">
@@ -41,41 +37,37 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <form class="w-full max-w-[320px] flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form action={loginAction} method="post" class="w-full max-w-[320px] flex flex-col gap-4">
           <FormField
             label="Email"
             type="email"
-            id="email"
+            name="email"
             placeholder="your@email.com"
-            value={email()}
-            onInput={setEmail}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             autocomplete="email"
           />
 
           <FormField
             label="Password"
             type="password"
-            id="password"
+            name="password"
             placeholder="Enter your password"
-            value={password()}
-            onInput={setPassword}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             autocomplete="current-password"
           />
 
-          {error() && (
+          {submission.error && (
             <div class="bg-blood-red/30 border border-blood-red text-neon-red py-2.5 px-3.5 text-[0.9rem] text-center">
-              {error()}
+              {submission.error.message}
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
           >
-            {loading() ? 'LOGGING IN...' : 'LOGIN'}
+            {submission.pending ? 'LOGGING IN...' : 'LOGIN'}
           </button>
         </form>
 
@@ -93,25 +85,21 @@ export default function Login() {
 function FormField(props: {
   label: string
   type: string
-  id: string
+  name: string
   placeholder: string
-  value: string
-  onInput: (val: string) => void
   disabled: boolean
   autocomplete?: string
 }) {
   return (
     <div class="flex flex-col gap-1">
-      <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.id}>
+      <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.name}>
         {props.label}
       </label>
       <input
         type={props.type}
-        id={props.id}
-        name={props.id}
+        id={props.name}
+        name={props.name}
         placeholder={props.placeholder}
-        value={props.value}
-        onInput={(e) => props.onInput(e.currentTarget.value)}
         disabled={props.disabled}
         required
         autocomplete={props.autocomplete}

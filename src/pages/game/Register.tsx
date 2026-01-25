@@ -1,54 +1,57 @@
-import { createSignal } from 'solid-js'
-import { A, useNavigate } from '@solidjs/router'
-import { register } from '../../lib/api'
+import { createSignal, createEffect, onMount, Show } from 'solid-js'
+import { action, useSubmission, A, useNavigate } from '@solidjs/router'
+import { register, isAuthenticated } from '../../lib/api'
+
+function capitalize(str: string): string {
+  const trimmed = str.trim()
+  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : ''
+}
+
+const registerAction = action(async (formData: FormData) => {
+  const password = formData.get('password') as string
+  const confirmPassword = formData.get('confirm-password') as string
+
+  if (password !== confirmPassword) {
+    throw new Error('Passwords do not match')
+  }
+
+  if (password.length < 8) {
+    throw new Error('Password must be at least 8 characters')
+  }
+
+  const result = await register({
+    registrationToken: (formData.get('registration-token') as string).trim(),
+    name: capitalize(formData.get('name') as string),
+    surname: capitalize(formData.get('surname') as string),
+    email: (formData.get('email') as string).trim(),
+    password,
+  })
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  return { success: true }
+}, 'register')
 
 export default function Register() {
   const navigate = useNavigate()
+  const submission = useSubmission(registerAction)
+  const [showSuccess, setShowSuccess] = createSignal(false)
 
-  const [registrationToken, setRegistrationToken] = createSignal('')
-  const [name, setName] = createSignal('')
-  const [surname, setSurname] = createSignal('')
-  const [email, setEmail] = createSignal('')
-  const [password, setPassword] = createSignal('')
-  const [confirmPassword, setConfirmPassword] = createSignal('')
-  const [error, setError] = createSignal('')
-  const [success, setSuccess] = createSignal('')
-  const [loading, setLoading] = createSignal(false)
-
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault()
-    setError('')
-    setSuccess('')
-
-    if (password() !== confirmPassword()) {
-      setError('Passwords do not match')
-      return
+  onMount(() => {
+    if (isAuthenticated()) {
+      navigate('/game/dashboard')
     }
+  })
 
-    if (password().length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
-    setLoading(true)
-
-    const result = await register({
-      registrationToken: registrationToken(),
-      name: name(),
-      surname: surname(),
-      email: email(),
-      password: password(),
-    })
-
-    if (result.data) {
-      setSuccess('Registration successful! Redirecting to login...')
+  // Handle successful registration
+  createEffect(() => {
+    if (submission.result?.success && !showSuccess()) {
+      setShowSuccess(true)
       setTimeout(() => navigate('/game/login'), 2000)
-    } else {
-      setError(result.error || 'Registration failed')
     }
-
-    setLoading(false)
-  }
+  })
 
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center justify-center p-4">
@@ -62,15 +65,13 @@ export default function Register() {
         </div>
 
         {/* Form */}
-        <form class="w-full max-w-110 flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form action={registerAction} method="post" class="w-full max-w-110 flex flex-col gap-4">
           <FormField
             label="Registration Token"
             type="password"
-            id="registration-token"
+            name="registration-token"
             placeholder="Enter token from WhatsApp"
-            value={registrationToken()}
-            onInput={setRegistrationToken}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             hint="Get this from the WhatsApp group"
           />
 
@@ -78,78 +79,66 @@ export default function Register() {
             <FormField
               label="Name"
               type="text"
-              id="name"
+              name="name"
               placeholder="Your name"
-              value={name()}
-              onInput={setName}
-              disabled={loading()}
+              disabled={submission.pending ?? false}
               autocomplete="given-name"
-              capitalize
             />
             <FormField
               label="Surname"
               type="text"
-              id="surname"
+              name="surname"
               placeholder="Your surname"
-              value={surname()}
-              onInput={setSurname}
-              disabled={loading()}
+              disabled={submission.pending ?? false}
               autocomplete="family-name"
-              capitalize
             />
           </div>
 
           <FormField
             label="Email"
             type="email"
-            id="email"
+            name="email"
             placeholder="your@email.com"
-            value={email()}
-            onInput={setEmail}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             autocomplete="email"
           />
 
           <FormField
             label="Password"
             type="password"
-            id="password"
+            name="password"
             placeholder="Create a password (min 8 chars)"
-            value={password()}
-            onInput={setPassword}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             autocomplete="new-password"
           />
 
           <FormField
             label="Confirm Password"
             type="password"
-            id="confirm-password"
+            name="confirm-password"
             placeholder="Confirm your password"
-            value={confirmPassword()}
-            onInput={setConfirmPassword}
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             autocomplete="new-password"
           />
 
-          {error() && (
+          <Show when={submission.error}>
             <div class="bg-blood-red/30 border border-blood-red text-neon-red py-2.5 px-3.5 text-[0.9rem] text-center">
-              {error()}
+              {submission.error?.message}
             </div>
-          )}
+          </Show>
 
-          {success() && (
+          <Show when={showSuccess()}>
             <div class="bg-[rgba(0,100,0,0.3)] border border-[#228B22] text-[#90EE90] py-2.5 px-3.5 text-[0.9rem] text-center">
-              {success()}
+              Registration successful! Redirecting to login...
             </div>
-          )}
+          </Show>
 
           <button
             type="submit"
-            disabled={loading()}
+            disabled={submission.pending ?? false}
             class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
           >
-            {loading() ? 'REGISTERING...' : 'REGISTER'}
+            {submission.pending ? 'REGISTERING...' : 'REGISTER'}
           </button>
         </form>
 
@@ -167,42 +156,24 @@ export default function Register() {
 function FormField(props: {
   label: string
   type: string
-  id: string
+  name: string
   placeholder: string
-  value: string
-  onInput: (val: string) => void
   disabled: boolean
   hint?: string
   autocomplete?: string
-  capitalize?: boolean
 }) {
-  const hintId = props.hint ? `${props.id}-hint` : undefined
-
-  const handleBlur = () => {
-    let value = props.value.trim()
-
-    if (props.capitalize && value) {
-      value = value.charAt(0).toUpperCase() + value.slice(1)
-    }
-
-    if (value !== props.value) {
-      props.onInput(value)
-    }
-  }
+  const hintId = props.hint ? `${props.name}-hint` : undefined
 
   return (
     <div class="flex flex-col gap-1 flex-1">
-      <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.id}>
+      <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.name}>
         {props.label}
       </label>
       <input
         type={props.type}
-        id={props.id}
-        name={props.id}
+        id={props.name}
+        name={props.name}
         placeholder={props.placeholder}
-        value={props.value}
-        onInput={(e) => props.onInput(e.currentTarget.value)}
-        onBlur={handleBlur}
         disabled={props.disabled}
         required
         autocomplete={props.autocomplete}
