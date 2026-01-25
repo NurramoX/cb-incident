@@ -1,3 +1,5 @@
+import { createSignal } from 'solid-js'
+import { makePersisted } from '@solid-primitives/storage'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
@@ -66,19 +68,23 @@ export interface LoginInput {
 }
 
 export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
+  message: string
   user: {
     id: string
     email: string
+  }
+  session: {
+    access_token: string
+    refresh_token: string
+    expires_at: number
   }
 }
 
 export async function login(input: LoginInput): Promise<ApiResponse<LoginResponse>> {
   const result = await callEdgeFunction<LoginResponse>('login', input)
 
-  if (result.data) {
-    saveTokens(result.data.accessToken, result.data.refreshToken)
+  if (result.data?.session) {
+    saveTokens(result.data.session.access_token, result.data.session.refresh_token)
   }
 
   return result
@@ -86,47 +92,58 @@ export async function login(input: LoginInput): Promise<ApiResponse<LoginRespons
 
 // ============ Session Management ============
 
-const ACCESS_TOKEN_KEY = 'cb_access_token'
-const REFRESH_TOKEN_KEY = 'cb_refresh_token'
+const [accessToken, setAccessToken] = makePersisted(createSignal<string | null>(null), {
+  name: 'cb_access_token',
+})
 
-function saveTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+const [refreshToken, setRefreshToken] = makePersisted(createSignal<string | null>(null), {
+  name: 'cb_refresh_token',
+})
+
+function saveTokens(newAccessToken: string, newRefreshToken: string) {
+  setAccessToken(newAccessToken)
+  setRefreshToken(newRefreshToken)
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY)
+  return accessToken()
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
+  return refreshToken()
 }
 
 function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  setAccessToken(null)
+  setRefreshToken(null)
 }
 
 export function isAuthenticated(): boolean {
-  return !!getAccessToken()
+  return !!accessToken()
 }
+
+// Export reactive signal for components
+export { accessToken }
 
 // ============ Authenticated Supabase Client ============
 
 let supabaseClient: SupabaseClient | null = null
+let cachedToken: string | null = null
 
 export function getSupabaseClient(): SupabaseClient {
-  const accessToken = getAccessToken()
+  const token = accessToken()
 
-  if (!accessToken) {
+  if (!token) {
     throw new Error('Not authenticated')
   }
 
-  if (!supabaseClient) {
+  // Recreate client if token changed
+  if (!supabaseClient || cachedToken !== token) {
+    cachedToken = token
     supabaseClient = createClient(SUPABASE_URL, '', {
       global: {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       },
       auth: {
@@ -141,6 +158,7 @@ export function getSupabaseClient(): SupabaseClient {
 
 function clearSupabaseClient() {
   supabaseClient = null
+  cachedToken = null
 }
 
 export function logout() {

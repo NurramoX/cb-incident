@@ -84,6 +84,7 @@ export default function Register() {
               onInput={setName}
               disabled={loading()}
               autocomplete="given-name"
+              capitalize
             />
             <FormField
               label="Surname"
@@ -94,6 +95,7 @@ export default function Register() {
               onInput={setSurname}
               disabled={loading()}
               autocomplete="family-name"
+              capitalize
             />
           </div>
 
@@ -145,24 +147,9 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading()}
-            class="group relative mt-4 py-4 px-8 font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em] cursor-pointer overflow-hidden transition-all duration-300 bg-gradient-to-b from-crimson to-blood-red border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
           >
-            {/* Corner accents */}
-            <span class="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-pale-gold" />
-            <span class="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-pale-gold" />
-            <span class="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-pale-gold" />
-            <span class="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-pale-gold" />
-
-            {/* Glow effect */}
-            <span class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 [box-shadow:inset_0_0_20px_rgba(220,20,60,0.5),0_0_30px_rgba(220,20,60,0.4)]" />
-
-            {/* Scan line on hover */}
-            <span class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-
-            {/* Text */}
-            <span class="relative z-10 [text-shadow:0_0_10px_rgba(255,255,255,0.5)]">
-              {loading() ? 'Registering...' : 'Register'}
-            </span>
+            {loading() ? 'REGISTERING...' : 'REGISTER'}
           </button>
         </form>
 
@@ -187,8 +174,21 @@ function FormField(props: {
   disabled: boolean
   hint?: string
   autocomplete?: string
+  capitalize?: boolean
 }) {
   const hintId = props.hint ? `${props.id}-hint` : undefined
+
+  const handleBlur = () => {
+    let value = props.value.trim()
+
+    if (props.capitalize && value) {
+      value = value.charAt(0).toUpperCase() + value.slice(1)
+    }
+
+    if (value !== props.value) {
+      props.onInput(value)
+    }
+  }
 
   return (
     <div class="flex flex-col gap-1 flex-1">
@@ -202,9 +202,12 @@ function FormField(props: {
         placeholder={props.placeholder}
         value={props.value}
         onInput={(e) => props.onInput(e.currentTarget.value)}
+        onBlur={handleBlur}
         disabled={props.disabled}
         required
         autocomplete={props.autocomplete}
+        autocorrect="off"
+        spellcheck={false}
         aria-describedby={hintId}
         class="bg-dark-bg/90 border border-crimson/40 py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
       />

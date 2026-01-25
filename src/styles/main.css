@@ -57,3 +57,65 @@ input:-webkit-autofill:focus {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
+
+/* Glow button */
+.glow-btn {
+  position: relative;
+  z-index: 0;
+  border: none;
+  outline: none;
+  background: var(--color-dark-bg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.glow-btn::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    var(--color-blood-red),
+    var(--color-crimson),
+    var(--color-gold),
+    var(--color-pale-gold),
+    var(--color-gold),
+    var(--color-crimson),
+    var(--color-blood-red)
+  );
+  background-size: 200% 100%;
+  filter: blur(5px);
+  animation: glow-btn-anim 12s linear infinite;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.glow-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-dark-bg);
+}
+
+.glow-btn:hover::before {
+  filter: blur(8px);
+}
+
+.glow-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.glow-btn:disabled::before {
+  animation-play-state: paused;
+  filter: blur(3px);
+}
+
+@keyframes glow-btn-anim {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
