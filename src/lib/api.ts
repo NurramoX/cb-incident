@@ -112,6 +112,17 @@ export function isAuthenticated(): boolean {
   return !!accessToken()
 }
 
+export function getCurrentUserId(): string | null {
+  const token = accessToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.sub
+  } catch {
+    return null
+  }
+}
+
 function isTokenExpired(): boolean {
   const exp = expiresAt()
   if (!exp) return true
@@ -247,4 +258,110 @@ export async function fetchProfiles(): Promise<Profile[]> {
   }
 
   return data as Profile[]
+}
+
+// ============ Team Management ============
+
+export interface TeamMember {
+  name: string
+  surname: string
+}
+
+export interface Team {
+  name: string
+  created_at: string
+  member_1: string
+  member_2: string
+  member_1_name: string
+  member_2_name: string
+}
+
+async function callAuthenticatedEdgeFunction<T>(
+  functionName: string,
+  method: string,
+  body?: object
+): Promise<ApiResponse<T>> {
+  try {
+    const token = await ensureValidToken()
+
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+
+    if (body) {
+      options.body = JSON.stringify(body)
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, options)
+    const data = await response.json()
+
+    if (!response.ok) {
+      return { error: data.error || 'Request failed' }
+    }
+
+    return { data }
+  } catch (err) {
+    if (err instanceof Error && (err.message === 'Not authenticated' || err.message === 'Session expired')) {
+      return { error: err.message }
+    }
+    return { error: 'Network error' }
+  }
+}
+
+export async function fetchTeams(): Promise<Team[]> {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from('team')
+    .select(`
+      name,
+      created_at,
+      member_1,
+      member_2,
+      member_1_profile:profiles!member_1(name, surname),
+      member_2_profile:profiles!member_2(name, surname)
+    `)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data ?? []).map((t: any) => ({
+    name: t.name,
+    created_at: t.created_at,
+    member_1: t.member_1,
+    member_2: t.member_2,
+    member_1_name: `${t.member_1_profile?.name ?? ''} ${t.member_1_profile?.surname ?? ''}`.trim(),
+    member_2_name: `${t.member_2_profile?.name ?? ''} ${t.member_2_profile?.surname ?? ''}`.trim(),
+  }))
+}
+
+export interface CreateTeamInput {
+  name: string
+  partnerId: string
+}
+
+export async function createTeam(input: CreateTeamInput): Promise<ApiResponse<{ team: Team }>> {
+  return callAuthenticatedEdgeFunction<{ team: Team }>('team', 'POST', {
+    name: input.name,
+    other_member_id: input.partnerId,
+  })
+}
+
+export interface UpdateTeamInput {
+  name: string
+}
+
+export async function updateTeam(input: UpdateTeamInput): Promise<ApiResponse<{ team: Team }>> {
+  return callAuthenticatedEdgeFunction<{ team: Team }>('team', 'PUT', {
+    name: input.name,
+  })
+}
+
+export async function disbandTeam(): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('team', 'DELETE')
 }

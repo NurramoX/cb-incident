@@ -27,7 +27,7 @@ export default function Login() {
 
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center justify-center p-4">
-      <div class="relative z-10 w-full max-w-[480px] flex flex-col items-center gap-6">
+      <div class="relative z-10 w-full max-w-120 flex flex-col items-center gap-6">
         {/* Header */}
         <h1 class="font-orbitron font-black text-[2rem] text-center text-transparent [-webkit-text-stroke:1.5px_var(--color-pale-gold)] [text-shadow:0_0_12px_rgba(212,175,55,0.5),0_0_24px_rgba(212,175,55,0.3)] tracking-[0.1em] mb-0.5">
           CB INCIDENT

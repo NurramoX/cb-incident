@@ -7,6 +7,7 @@ const GameLayout = lazy(() => import('./pages/game/GameLayout'))
 const Register = lazy(() => import('./pages/game/Register'))
 const Login = lazy(() => import('./pages/game/Login'))
 const Dashboard = lazy(() => import('./pages/game/Dashboard'))
+const Team = lazy(() => import('./pages/game/Team'))
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
         <Route path="/dashboard" component={Dashboard} />
+        <Route path="/team" component={Team} />
       </Route>
     </>
   )
