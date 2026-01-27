@@ -40,12 +40,21 @@ export default function Details() {
 
           <RulesBox title="🎟️ HOW TO JOIN" delay={1}>
             <span class="text-pale-gold font-semibold">No entry fee!</span>
+            <br /> <br />
+            Visit this <A href="/game/register" class="text-pale-gold font-semibold text-xl underline">link</A> to register!
             <br /><br />
-            Just message me that you want to participate. Got a team name? Let me know!
+            <span class="text-pale-gold font-semibold">Team Creation</span>
+            <br /><br />
+            Navigate to <span class="text-pale-gold font-bold">My Team</span> on your dashboard to set your team name and select your partner.
+            
+            <br /><br />
+            If you are participating as a team, <span class="text-pale-gold font-bold">both</span> partners must be registered.
           </RulesBox>
 
-          <RulesBox title="Any Questions?" delay={1.5}>
+          <RulesBox title="Any Questions or Issues?" delay={1.5}>
             Always feel free to ask me personally on WhatsApp!
+
+            I'll try to respond as soon as possible!
           </RulesBox>
 
           {/* Back Link */}

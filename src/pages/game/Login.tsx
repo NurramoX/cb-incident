@@ -1,5 +1,5 @@
 import { action, useSubmission, A, redirect, useNavigate } from '@solidjs/router'
-import { onMount } from 'solid-js'
+import { createSignal, createEffect, onMount } from 'solid-js'
 import { login, isAuthenticated } from '../../lib/api'
 
 const loginAction = action(async (formData: FormData) => {
@@ -19,9 +19,24 @@ export default function Login() {
   const navigate = useNavigate()
   const submission = useSubmission(loginAction)
 
+  const [email, setEmail] = createSignal('')
+  const [password, setPassword] = createSignal('')
+  const [emailError, setEmailError] = createSignal('')
+  const [passwordError, setPasswordError] = createSignal('')
+
+  const isValid = () => email().includes('@') && password().length >= 1
+
   onMount(() => {
     if (isAuthenticated()) {
       navigate('/game/dashboard')
+    }
+  })
+
+  // Show errors on both fields when login fails
+  createEffect(() => {
+    if (submission.error) {
+      setEmailError('Invalid login credentials')
+      setPasswordError('Invalid login credentials')
     }
   })
 
@@ -37,7 +52,7 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <form action={loginAction} method="post" class="w-full max-w-[320px] flex flex-col gap-4">
+        <form action={loginAction} method="post" class="w-full max-w-[320px] flex flex-col gap-6">
           <FormField
             label="Email"
             type="email"
@@ -45,6 +60,8 @@ export default function Login() {
             placeholder="your@email.com"
             disabled={submission.pending ?? false}
             autocomplete="email"
+            onInput={(v) => { setEmail(v); setEmailError(''); setPasswordError('') }}
+            error={emailError()}
           />
 
           <FormField
@@ -54,18 +71,14 @@ export default function Login() {
             placeholder="Enter your password"
             disabled={submission.pending ?? false}
             autocomplete="current-password"
+            onInput={(v) => { setPassword(v); setEmailError(''); setPasswordError('') }}
+            error={passwordError()}
           />
-
-          {submission.error && (
-            <div class="bg-blood-red/30 border border-blood-red text-neon-red py-2.5 px-3.5 text-[0.9rem] text-center">
-              {submission.error.message}
-            </div>
-          )}
 
           <button
             type="submit"
-            disabled={submission.pending ?? false}
-            class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
+            disabled={!isValid() || (submission.pending ?? false)}
+            class="glow-btn mt-4 h-11 px-8 rounded-full flex items-center justify-center font-orbitron text-[0.8rem] text-white uppercase tracking-[0.2em] self-center"
           >
             {submission.pending ? 'LOGGING IN...' : 'LOGIN'}
           </button>
@@ -89,24 +102,47 @@ function FormField(props: {
   placeholder: string
   disabled: boolean
   autocomplete?: string
+  onInput?: (value: string) => void
+  error?: string
 }) {
+  // Keep track of last error to show during fade-out
+  const [displayedError, setDisplayedError] = createSignal(props.error || '')
+
+  createEffect(() => {
+    if (props.error) {
+      setDisplayedError(props.error)
+    }
+  })
+
   return (
     <div class="flex flex-col gap-1">
       <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.name}>
         {props.label}
       </label>
-      <input
-        type={props.type}
-        id={props.name}
-        name={props.name}
-        placeholder={props.placeholder}
-        disabled={props.disabled}
-        required
-        autocomplete={props.autocomplete}
-        autocorrect="off"
-        spellcheck={false}
-        class="bg-dark-bg/90 border border-crimson/40 py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-      />
+      <div class="relative">
+        <input
+          type={props.type}
+          id={props.name}
+          name={props.name}
+          placeholder={props.placeholder}
+          disabled={props.disabled}
+          required
+          autocomplete={props.autocomplete}
+          autocorrect="off"
+          spellcheck={false}
+          onInput={(e) => props.onInput?.(e.currentTarget.value)}
+          class={`w-full bg-dark-bg/90 border py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50 disabled:cursor-not-allowed ${
+            props.error ? 'border-neon-red' : 'border-crimson/40'
+          }`}
+        />
+        <span
+          class={`absolute left-0 top-full mt-0.5 text-[0.75rem] text-neon-red transition-opacity duration-200 ${
+            props.error ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {displayedError() || '\u00A0'}
+        </span>
+      </div>
     </div>
   )
 }

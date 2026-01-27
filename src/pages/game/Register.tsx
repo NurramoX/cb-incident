@@ -4,7 +4,7 @@ import { register, isAuthenticated } from '../../lib/api'
 
 function capitalize(str: string): string {
   const trimmed = str.trim()
-  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : ''
+  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase() : ''
 }
 
 const registerAction = action(async (formData: FormData) => {
@@ -39,6 +39,43 @@ export default function Register() {
   const submission = useSubmission(registerAction)
   const [showSuccess, setShowSuccess] = createSignal(false)
 
+  const [token, setToken] = createSignal('')
+  const [name, setName] = createSignal('')
+  const [surname, setSurname] = createSignal('')
+  const [email, setEmail] = createSignal('')
+  const [password, setPassword] = createSignal('')
+  const [confirmPassword, setConfirmPassword] = createSignal('')
+
+  const [emailError, setEmailError] = createSignal('')
+  const [passwordLengthError, setPasswordLengthError] = createSignal('')
+  const [passwordMatchError, setPasswordMatchError] = createSignal('')
+
+  const isValid = () =>
+    token().length > 0 &&
+    name().length > 0 &&
+    surname().length > 0 &&
+    email().includes('@') &&
+    password().length >= 8 &&
+    password() === confirmPassword()
+
+  const handleEmailBlur = () => {
+    if (email().length > 0 && !email().includes('@')) {
+      setEmailError('Please enter a valid email address')
+    }
+  }
+
+  const handlePasswordBlur = () => {
+    if (password().length > 0 && password().length < 8) {
+      setPasswordLengthError('Password must be at least 8 characters')
+    }
+  }
+
+  const handleConfirmPasswordBlur = () => {
+    if (password().length > 0 && confirmPassword().length > 0 && password() !== confirmPassword()) {
+      setPasswordMatchError('Passwords do not match')
+    }
+  }
+
   onMount(() => {
     if (isAuthenticated()) {
       navigate('/game/dashboard')
@@ -65,7 +102,7 @@ export default function Register() {
         </div>
 
         {/* Form */}
-        <form action={registerAction} method="post" class="w-full max-w-110 flex flex-col gap-4">
+        <form action={registerAction} method="post" class="w-full max-w-110 flex flex-col gap-6">
           <FormField
             label="Registration Token"
             type="password"
@@ -73,6 +110,7 @@ export default function Register() {
             placeholder="Enter token from WhatsApp"
             disabled={submission.pending ?? false}
             hint="Get this from the WhatsApp group"
+            onInput={setToken}
           />
 
           <div class="flex flex-col sm:flex-row gap-3">
@@ -83,6 +121,9 @@ export default function Register() {
               placeholder="Your name"
               disabled={submission.pending ?? false}
               autocomplete="given-name"
+              value={name()}
+              onInput={setName}
+              onBlur={() => setName(capitalize(name()))}
             />
             <FormField
               label="Surname"
@@ -91,6 +132,9 @@ export default function Register() {
               placeholder="Your surname"
               disabled={submission.pending ?? false}
               autocomplete="family-name"
+              value={surname()}
+              onInput={setSurname}
+              onBlur={() => setSurname(capitalize(surname()))}
             />
           </div>
 
@@ -101,6 +145,9 @@ export default function Register() {
             placeholder="your@email.com"
             disabled={submission.pending ?? false}
             autocomplete="email"
+            onInput={(v) => { setEmail(v); setEmailError('') }}
+            onBlur={handleEmailBlur}
+            error={emailError()}
           />
 
           <FormField
@@ -110,6 +157,9 @@ export default function Register() {
             placeholder="Create a password (min 8 chars)"
             disabled={submission.pending ?? false}
             autocomplete="new-password"
+            onInput={(v) => { setPassword(v); setPasswordLengthError(''); setPasswordMatchError('') }}
+            onBlur={handlePasswordBlur}
+            error={passwordLengthError()}
           />
 
           <FormField
@@ -119,6 +169,9 @@ export default function Register() {
             placeholder="Confirm your password"
             disabled={submission.pending ?? false}
             autocomplete="new-password"
+            onInput={(v) => { setConfirmPassword(v); setPasswordMatchError('') }}
+            onBlur={handleConfirmPasswordBlur}
+            error={passwordMatchError()}
           />
 
           <Show when={submission.error}>
@@ -135,8 +188,8 @@ export default function Register() {
 
           <button
             type="submit"
-            disabled={submission.pending ?? false}
-            class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
+            disabled={!isValid() || (submission.pending ?? false)}
+            class="glow-btn mt-4 h-11 px-8 rounded-full flex items-center justify-center font-orbitron text-[0.8rem] text-white uppercase tracking-[0.2em] self-center"
           >
             {submission.pending ? 'REGISTERING...' : 'REGISTER'}
           </button>
@@ -161,28 +214,60 @@ function FormField(props: {
   disabled: boolean
   hint?: string
   autocomplete?: string
+  value?: string
+  onInput?: (value: string) => void
+  onBlur?: () => void
+  error?: string
 }) {
   const hintId = props.hint ? `${props.name}-hint` : undefined
+
+  // Keep track of last error to show during fade-out
+  const [displayedError, setDisplayedError] = createSignal(props.error || '')
+
+  createEffect(() => {
+    if (props.error) {
+      setDisplayedError(props.error)
+    }
+    // When error clears, keep displaying old text while it fades out
+  })
 
   return (
     <div class="flex flex-col gap-1 flex-1">
       <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]" for={props.name}>
         {props.label}
       </label>
-      <input
-        type={props.type}
-        id={props.name}
-        name={props.name}
-        placeholder={props.placeholder}
-        disabled={props.disabled}
-        required
-        autocomplete={props.autocomplete}
-        autocorrect="off"
-        spellcheck={false}
-        aria-describedby={hintId}
-        class="bg-dark-bg/90 border border-crimson/40 py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-      />
-      {props.hint && <span id={hintId} class="text-[0.75rem] text-white/40">{props.hint}</span>}
+      <div class="relative">
+        <input
+          type={props.type}
+          id={props.name}
+          name={props.name}
+          placeholder={props.placeholder}
+          disabled={props.disabled}
+          required
+          autocomplete={props.autocomplete}
+          autocorrect="off"
+          spellcheck={false}
+          aria-describedby={hintId}
+          onInput={(e) => props.onInput?.(e.currentTarget.value)}
+          onBlur={() => props.onBlur?.()}
+          class={`w-full bg-dark-bg/90 border py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50 disabled:cursor-not-allowed ${
+            props.error ? 'border-neon-red' : 'border-crimson/40'
+          }`}
+          {...(props.value !== undefined ? { value: props.value } : {})}
+        />
+        <span
+          class={`absolute left-0 top-full mt-0.5 text-[0.75rem] text-neon-red transition-opacity duration-200 ${
+            props.error ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {displayedError() || '\u00A0'}
+        </span>
+        {props.hint && !props.error && (
+          <span id={hintId} class="absolute left-0 top-full mt-0.5 text-[0.75rem] text-white/40">
+            {props.hint}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

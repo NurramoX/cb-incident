@@ -91,6 +91,7 @@ input:-webkit-autofill:focus {
   filter: blur(5px);
   animation: glow-btn-anim 12s linear infinite;
   transition: opacity 0.3s ease-in-out;
+  border-radius: inherit;
 }
 
 .glow-btn::after {
@@ -99,6 +100,7 @@ input:-webkit-autofill:focus {
   inset: 0;
   z-index: -1;
   background: var(--color-dark-bg);
+  border-radius: inherit;
 }
 
 .glow-btn:hover::before {
@@ -111,11 +113,63 @@ input:-webkit-autofill:focus {
 }
 
 .glow-btn:disabled::before {
-  animation-play-state: paused;
-  filter: blur(3px);
+  opacity: 0;
 }
 
 @keyframes glow-btn-anim {
   0% { background-position: 0% 0; }
   100% { background-position: 200% 0; }
+}
+
+@keyframes border-beam {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Existing Tracing Beam Animation */
+@keyframes border-beam {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* New Pulsating Glow for Edit Mode */
+@keyframes pulse-glow {
+  0%, 100% { 
+    border-color: rgba(212, 175, 55, 0.3);
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.1);
+  }
+  50% { 
+    border-color: rgba(212, 175, 55, 0.7);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  }
+}
+
+@keyframes pulse-crimson {
+  0%, 100% { 
+    border-color: rgba(220, 20, 60, 0.3);
+    box-shadow: 0 0 5px rgba(220, 20, 60, 0.1);
+  }
+  50% { 
+    border-color: rgba(220, 20, 60, 0.8);
+    box-shadow: 0 0 15px rgba(220, 20, 60, 0.3);
+  }
+}
+
+@keyframes pulse-gold {
+  0%, 100% { 
+    border-color: rgba(212, 175, 55, 0.3);
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.1);
+  }
+  50% { 
+    border-color: rgba(212, 175, 55, 0.8);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  }
+}
+
+.animate-pulse-crimson {
+  animation: pulse-crimson 5s ease-in-out infinite;
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 5s ease-in-out infinite;
 }

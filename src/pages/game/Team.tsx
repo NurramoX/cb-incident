@@ -12,6 +12,7 @@ import {
   Team,
 } from '../../lib/api'
 import Combobox, { ComboboxOption } from '../../components/Combobox'
+import ConfirmDialog from '../../components/ConfirmDialog'
 
 export default function TeamPage() {
   const navigate = useNavigate()
@@ -27,6 +28,7 @@ export default function TeamPage() {
   const [teamName, setTeamName] = createSignal('')
   const [selectedPartner, setSelectedPartner] = createSignal('')
   const [editMode, setEditMode] = createSignal(false)
+  const [showTerminateDialog, setShowTerminateDialog] = createSignal(false)
 
   const userId = getCurrentUserId()
 
@@ -124,8 +126,7 @@ export default function TeamPage() {
   }
 
   const handleDisband = async () => {
-    if (!confirm('Are you sure you want to disband your team?')) return
-
+    setShowTerminateDialog(false)
     setSubmitting(true)
     setError('')
 
@@ -137,10 +138,7 @@ export default function TeamPage() {
       return
     }
 
-    setTeamName('')
-    setSelectedPartner('')
-    await loadData()
-    setSubmitting(false)
+    navigate('/game/dashboard')
   }
 
   const formatName = (name: string, surname: string) => `${name} ${surname.charAt(0)}.`
@@ -151,7 +149,8 @@ export default function TeamPage() {
         {/* Header */}
         <div class="w-full flex items-center justify-between">
           <h1 class="font-orbitron font-black text-[1.5rem] text-transparent [-webkit-text-stroke:1px_var(--color-pale-gold)] [text-shadow:0_0_12px_rgba(212,175,55,0.5)] tracking-[0.1em]">
-            CB INCIDENT
+            <span class="md:hidden">CBI<span class="text-[0.55rem] tracking-[0.05em] text-pale-gold [-webkit-text-stroke:0]">ncident</span></span>
+            <span class="hidden md:inline">CB INCIDENT</span>
           </h1>
           <A
             href="/game/dashboard"
@@ -216,94 +215,118 @@ export default function TeamPage() {
               <button
                 type="submit"
                 disabled={submitting() || !teamName().trim() || !selectedPartner()}
-                class="glow-btn mt-4 w-full h-14 flex items-center justify-center font-orbitron text-[0.9rem] text-white uppercase tracking-[0.2em]"
+                class="glow-btn mt-4 h-11 px-8 rounded-full flex items-center justify-center font-orbitron text-[0.8rem] text-white uppercase tracking-[0.2em] self-center"
               >
                 {submitting() ? 'CREATING...' : 'CREATE TEAM'}
               </button>
             </form>
           </Show>
 
-          {/* Has Team - View/Edit */}
-          <Show when={myTeam()}>
-            <div class="w-full flex flex-col gap-4">
-              <Show when={!editMode()}>
-                {/* View Mode */}
-                <div class="border border-crimson/40 p-4 flex flex-col gap-3">
-                  <div class="flex flex-col gap-1">
-                    <span class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]">
-                      Team Name
-                    </span>
-                    <span class="font-rajdhani text-lg text-white">{myTeam()?.name}</span>
-                  </div>
 
-                  <div class="flex flex-col gap-1">
-                    <span class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]">
-                      Members
-                    </span>
-                    <span class="font-rajdhani text-white/70">
-                      {myTeam()?.member_1_name} & {myTeam()?.member_2_name}
-                    </span>
-                  </div>
-                </div>
+<Show when={myTeam()}>
+  <div class="w-full animate-in fade-in duration-500">
+    
+    <Show when={!editMode()}>
+      {/* --- VIEW MODE: CRIMSON PULSE --- */}
+      <div class="animate-pulse-crimson border bg-dark-bg/80 backdrop-blur-md overflow-hidden">
+        
+        {/* Header */}
+        <div class="p-5 border-b border-crimson/20">
+          <label class="font-orbitron text-[0.6rem] text-crimson uppercase tracking-[0.2em] block mb-1">
+            My Team
+          </label>
+          <h2 class="font-orbitron text-[1.3rem] text-white uppercase tracking-[0.1em] [text-shadow:0_0_10px_rgba(255,255,255,0.2)]">
+            {myTeam()?.name}
+          </h2>
+        </div>
 
-                <div class="flex gap-16">
-                  <button
-                    onClick={() => setEditMode(true)}
-                    class="flex-1 py-3 border border-pale-gold/40 font-orbitron text-[0.75rem] text-pale-gold uppercase tracking-[0.15em] hover:border-pale-gold hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200"
-                  >
-                    Edit Name
-                  </button>
-                  <button
-                    onClick={handleDisband}
-                    disabled={submitting()}
-                    class="flex-1 py-3 border border-blood-red/40 font-orbitron text-[0.75rem] text-neon-red uppercase tracking-[0.15em] hover:border-blood-red hover:[text-shadow:0_0_8px_var(--color-neon-red)] transition-all duration-200 disabled:opacity-50"
-                  >
-                    {submitting() ? 'DISBANDING...' : 'DISBAND'}
-                  </button>
-                </div>
-              </Show>
+        {/* Members (Horizontal Rows) */}
+        <div class="flex flex-col">
+          <div class="px-5 py-3.5 flex items-center justify-between border-b border-crimson/10 bg-white/[0.02]">
+            <span class="font-orbitron text-[0.55rem] text-white/40 uppercase tracking-[0.15em]">Member 01</span>
+            <span class="font-rajdhani text-[1.1rem] text-white font-medium">
+              {myTeam()?.member_1 === userId ? myTeam()?.member_1_name : myTeam()?.member_2_name}
+            </span>
+          </div>
+          <div class="px-5 py-3.5 flex items-center justify-between bg-white/[0.02]">
+            <span class="font-orbitron text-[0.55rem] text-white/40 uppercase tracking-[0.15em]">Member 02</span>
+            <span class="font-rajdhani text-[1.1rem] text-white font-medium">
+              {myTeam()?.member_1 === userId ? myTeam()?.member_2_name : myTeam()?.member_1_name}
+            </span>
+          </div>
+        </div>
 
-              <Show when={editMode()}>
-                {/* Edit Mode */}
-                <form onSubmit={handleUpdate} class="flex flex-col gap-4">
-                  <div class="flex flex-col gap-1">
-                    <label class="font-orbitron text-[0.65rem] text-crimson uppercase tracking-[0.15em]">
-                      Team Name
-                    </label>
-                    <input
-                      type="text"
-                      value={teamName()}
-                      onInput={(e) => setTeamName(e.currentTarget.value)}
-                      placeholder="Enter team name"
-                      disabled={submitting()}
-                      required
-                      class="bg-dark-bg/90 border border-crimson/40 py-3 px-3.5 font-rajdhani text-base text-white outline-none transition-all duration-200 placeholder:text-white/30 focus:border-crimson focus:shadow-[0_0_15px_rgba(220,20,60,0.3)] disabled:opacity-50"
-                    />
-                  </div>
+        {/* Footer Actions */}
+        <div class="flex h-12 border-t border-crimson/20">
+          <button
+            onClick={() => setEditMode(true)}
+            class="flex-1 font-orbitron text-[0.7rem] text-pale-gold uppercase tracking-[0.2em] hover:bg-pale-gold/10 hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200 border-r border-crimson/20"
+          >
+            Modify
+          </button>
+          <button
+            onClick={() => setShowTerminateDialog(true)}
+            disabled={submitting()}
+            class="flex-1 font-orbitron text-[0.7rem] text-crimson uppercase tracking-[0.2em] hover:bg-crimson/10 hover:[text-shadow:0_0_8px_var(--color-crimson)] transition-all duration-200 disabled:opacity-50"
+          >
+            {submitting() ? '...' : 'Terminate'}
+          </button>
+        </div>
+      </div>
+    </Show>
 
-                  <div class="flex gap-16">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditMode(false)
-                        setTeamName(myTeam()?.name || '')
-                      }}
-                      class="flex-1 py-3 border border-white/20 font-orbitron text-[0.75rem] text-white/50 uppercase tracking-[0.15em] hover:border-white/40 hover:text-white/70 transition-all duration-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting() || !teamName().trim()}
-                      class="flex-1 py-3 border border-pale-gold/40 font-orbitron text-[0.75rem] text-pale-gold uppercase tracking-[0.15em] hover:border-pale-gold hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200 disabled:opacity-50"
-                    >
-                      {submitting() ? 'SAVING...' : 'SAVE'}
-                    </button>
-                  </div>
-                </form>
-              </Show>
-            </div>
-          </Show>
+    <Show when={editMode()}>
+      {/* --- EDIT MODE: GOLD PULSE --- */}
+      <div class="animate-pulse-gold border bg-dark-bg/80 backdrop-blur-md p-5">
+        <label class="font-orbitron text-[0.6rem] text-pale-gold uppercase tracking-[0.2em] block mb-3">
+          Modify Team Name
+        </label>
+
+        <input
+          type="text"
+          value={teamName()}
+          onInput={(e) => setTeamName(e.currentTarget.value)}
+          class="w-full bg-black/40 border border-pale-gold/20 py-3 px-4 font-rajdhani text-lg text-white outline-none focus:border-pale-gold/60 transition-all"
+        />
+
+        <div class="flex h-12 border-t border-pale-gold/20 mt-6 -mx-5 -mb-5">
+          <button
+            onClick={() => {
+              setEditMode(false)
+              setTeamName(myTeam()?.name || '')
+            }}
+            class="flex-1 font-orbitron text-[0.7rem] text-white/40 uppercase tracking-[0.2em] hover:text-white transition-all border-r border-pale-gold/20"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpdate}
+            disabled={submitting() || !teamName().trim()}
+            class="flex-1 font-orbitron text-[0.7rem] text-pale-gold uppercase tracking-[0.2em] hover:bg-pale-gold/10 transition-all disabled:opacity-50"
+          >
+            {submitting() ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </Show>
+
+    <ConfirmDialog
+      open={showTerminateDialog()}
+      title="Terminate Team"
+      message="Are you sure you want to disband your team? This action cannot be undone."
+      confirmText="Terminate"
+      variant="danger"
+      loading={submitting()}
+      onConfirm={handleDisband}
+      onCancel={() => setShowTerminateDialog(false)}
+    />
+
+  </div>
+</Show>
+
+
+
+
         </Show>
       </div>
     </div>
