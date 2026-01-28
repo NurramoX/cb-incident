@@ -46,9 +46,18 @@ export default function Register() {
   const [password, setPassword] = createSignal('')
   const [confirmPassword, setConfirmPassword] = createSignal('')
 
+  const [tokenError, setTokenError] = createSignal('')
   const [emailError, setEmailError] = createSignal('')
   const [passwordLengthError, setPasswordLengthError] = createSignal('')
   const [passwordMatchError, setPasswordMatchError] = createSignal('')
+
+  // Show token-related submission errors inline
+  createEffect(() => {
+    const err = submission.error?.message
+    if (err && (err.toLowerCase().includes('token') || err.toLowerCase().includes('registration'))) {
+      setTokenError(err)
+    }
+  })
 
   const isValid = () =>
     token().length > 0 &&
@@ -110,7 +119,8 @@ export default function Register() {
             placeholder="Enter token from WhatsApp"
             disabled={submission.pending ?? false}
             hint="Get this from the WhatsApp group"
-            onInput={setToken}
+            onInput={(v) => { setToken(v); setTokenError('') }}
+            error={tokenError()}
           />
 
           <div class="flex flex-col sm:flex-row gap-3">
@@ -173,12 +183,6 @@ export default function Register() {
             onBlur={handleConfirmPasswordBlur}
             error={passwordMatchError()}
           />
-
-          <Show when={submission.error}>
-            <div class="bg-blood-red/30 border border-blood-red text-neon-red py-2.5 px-3.5 text-[0.9rem] text-center">
-              {submission.error?.message}
-            </div>
-          </Show>
 
           <Show when={showSuccess()}>
             <div class="bg-[rgba(0,100,0,0.3)] border border-[#228B22] text-[#90EE90] py-2.5 px-3.5 text-[0.9rem] text-center">
