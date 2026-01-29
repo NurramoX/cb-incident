@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
   const [showLogoutDialog, setShowLogoutDialog] = createSignal(false)
+  const [teammateId, setTeammateId] = createSignal<string | null>(null)
 
   // Get set of duplicate first names
   const getDuplicateNames = () => {
@@ -46,7 +47,15 @@ export default function Dashboard() {
       ])
 
       const userId = getCurrentUserId()
-      setTeams(teamsResult ?? [])
+      // Sort teams: user's team first
+      const sortedTeams = [...(teamsResult ?? [])].sort((a, b) => {
+        const aIsMine = a.member_1 === userId || a.member_2 === userId
+        const bIsMine = b.member_1 === userId || b.member_2 === userId
+        if (aIsMine && !bIsMine) return -1
+        if (!aIsMine && bIsMine) return 1
+        return 0
+      })
+      setTeams(sortedTeams)
 
       // Build a map from profile ID to team name
       const map = new Map<string, string>()
@@ -57,23 +66,23 @@ export default function Dashboard() {
       setTeamMap(map)
 
       // Find user's teammate ID
-      let teammateId: string | null = null
       if (userId) {
         const userTeam = (teamsResult ?? []).find(
           (t) => t.member_1 === userId || t.member_2 === userId
         )
         if (userTeam) {
-          teammateId = userTeam.member_1 === userId ? userTeam.member_2 : userTeam.member_1
+          setTeammateId(userTeam.member_1 === userId ? userTeam.member_2 : userTeam.member_1)
         }
       }
 
       // Sort profiles: current user first, teammate second, then the rest
+      const tmId = teammateId()
       const sorted = userId
         ? [...profilesResult].sort((a, b) => {
             if (a.id === userId) return -1
             if (b.id === userId) return 1
-            if (a.id === teammateId) return -1
-            if (b.id === teammateId) return 1
+            if (a.id === tmId) return -1
+            if (b.id === tmId) return 1
             return 0
           })
         : profilesResult
@@ -173,30 +182,45 @@ export default function Dashboard() {
                   <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
                     Name
                   </th>
-                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
+                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
                     Team
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <For each={profiles()}>
-                  {(profile, index) => (
-                    <tr class="border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200">
-                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/50 py-2 px-2 sm:py-3 sm:px-4">
-                        {index() + 1}
-                      </td>
-                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-white py-2 px-2 sm:py-3 sm:px-4">
-                        {formatName(profile.name, profile.surname)}
-                      </td>
-                      <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${
-                        teamMap().get(profile.id) && teamMap().get(profile.id) === teamMap().get(getCurrentUserId() ?? '')
-                          ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]'
-                          : 'text-white/70'
-                      }`}>
-                        {teamMap().get(profile.id) || '—'}
-                      </td>
-                    </tr>
-                  )}
+                  {(profile, index) => {
+                    const userId = getCurrentUserId()
+                    const isMe = profile.id === userId
+                    const isMate = profile.id === teammateId()
+                    const isMyTeam = teamMap().get(profile.id) && teamMap().get(profile.id) === teamMap().get(userId ?? '')
+                    const teamName = teamMap().get(profile.id)
+
+                    return (
+                      <tr
+                        class={`row-stagger border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
+                          isMe ? 'border-l-2 border-l-crimson bg-crimson/5' : isMate ? 'border-l-2 border-l-pale-gold/60 bg-pale-gold/3' : ''
+                        }`}
+                        style={{ "animation-delay": `${index() * 50}ms` }}
+                      >
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-crimson' : 'text-white/40'}`}>
+                          {String(index() + 1).padStart(2, '0')}
+                        </td>
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-white font-semibold' : 'text-white'}`}>
+                          {formatName(profile.name, profile.surname)}
+                        </td>
+                        <td class="font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 text-right">
+                          {teamName ? (
+                            <span class={isMyTeam ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/70'}>
+                              {teamName}
+                            </span>
+                          ) : (
+                            <span class="text-white/30">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  }}
                 </For>
               </tbody>
             </table>
@@ -226,19 +250,31 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 <For each={teams()}>
-                  {(team, index) => (
-                    <tr class="border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200">
-                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/50 py-2 px-2 sm:py-3 sm:px-4">
-                        {index() + 1}
-                      </td>
-                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-white py-2 px-2 sm:py-3 sm:px-4">
-                        {team.name}
-                      </td>
-                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/70 py-2 px-2 sm:py-3 sm:px-4">
-                        {team.member_1_name.split(' ')[0]} & {team.member_2_name.split(' ')[0]}
-                      </td>
-                    </tr>
-                  )}
+                  {(team, index) => {
+                    const userId = getCurrentUserId()
+                    const isMyTeam = team.member_1 === userId || team.member_2 === userId
+
+                    return (
+                      <tr
+                        class={`row-stagger border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
+                          isMyTeam ? 'border-l-2 border-l-pale-gold/60 bg-pale-gold/3' : ''
+                        }`}
+                        style={{ "animation-delay": `${index() * 50}ms` }}
+                      >
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMyTeam ? 'text-pale-gold' : 'text-white/40'}`}>
+                          {String(index() + 1).padStart(2, '0')}
+                        </td>
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${
+                          isMyTeam ? 'text-pale-gold font-semibold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white'
+                        }`}>
+                          {team.name}
+                        </td>
+                        <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/70 py-2 px-2 sm:py-3 sm:px-4">
+                          {team.member_1_name.split(' ')[0]} & {team.member_2_name.split(' ')[0]}
+                        </td>
+                      </tr>
+                    )
+                  }}
                 </For>
               </tbody>
             </table>
