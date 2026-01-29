@@ -136,26 +136,32 @@ export default function Dashboard() {
         />
 
         {/* View Toggle */}
-        <div class="flex gap-2">
+        <div class="flex gap-6">
           <button
             onClick={() => setViewMode('participants')}
-            class={`font-orbitron text-[0.75rem] uppercase tracking-[0.15em] px-4 py-2 border transition-all duration-200 ${
+            class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
               viewMode() === 'participants'
-                ? 'text-crimson border-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
-                : 'text-white/40 border-white/20 hover:text-white/60 hover:border-white/40'
+                ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
+                : 'text-white/40 hover:text-white/60'
             }`}
           >
             Participants
+            <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
+              viewMode() === 'participants' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+            }`} />
           </button>
           <button
             onClick={() => setViewMode('teams')}
-            class={`font-orbitron text-[0.75rem] uppercase tracking-[0.15em] px-4 py-2 border transition-all duration-200 ${
+            class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
               viewMode() === 'teams'
-                ? 'text-crimson border-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
-                : 'text-white/40 border-white/20 hover:text-white/60 hover:border-white/40'
+                ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
+                : 'text-white/40 hover:text-white/60'
             }`}
           >
             Teams
+            <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
+              viewMode() === 'teams' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+            }`} />
           </button>
         </div>
 
@@ -196,10 +202,14 @@ export default function Dashboard() {
                     const isMyTeam = teamMap().get(profile.id) && teamMap().get(profile.id) === teamMap().get(userId ?? '')
                     const teamName = teamMap().get(profile.id)
 
+                    const hasTeam = !!teammateId()
+
                     return (
                       <tr
-                        class={`row-stagger border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
-                          isMe ? 'border-l-2 border-l-crimson bg-crimson/5' : isMate ? 'border-l-2 border-l-pale-gold/60 bg-pale-gold/3' : ''
+                        class={`border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
+                          (isMe || isMate) && hasTeam
+                            ? 'team-row-glow border-l-2 bg-crimson/5'
+                            : 'row-stagger'
                         }`}
                         style={{ "animation-delay": `${index() * 50}ms` }}
                       >
@@ -256,8 +266,8 @@ export default function Dashboard() {
 
                     return (
                       <tr
-                        class={`row-stagger border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
-                          isMyTeam ? 'border-l-2 border-l-pale-gold/60 bg-pale-gold/3' : ''
+                        class={`border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 ${
+                          isMyTeam ? 'team-row-glow border-l-2 bg-crimson/5' : 'row-stagger'
                         }`}
                         style={{ "animation-delay": `${index() * 50}ms` }}
                       >

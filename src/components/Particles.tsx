@@ -11,7 +11,7 @@ interface Particle {
 }
 
 const COLORS = ['#DC143C', '#ff2a2a', '#d4af37'] // crimson, neon-red, gold
-const PARTICLE_COUNT = 15
+const PARTICLE_COUNT = 10
 
 function createParticle(id: number): Particle {
   return {

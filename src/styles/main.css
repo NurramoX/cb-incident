@@ -189,3 +189,19 @@ input:-webkit-autofill:focus {
 .row-stagger {
   animation: fade-slide-in 0.35s ease-out both;
 }
+
+/* Team row gradient glow */
+@keyframes team-row-glow {
+  0%, 100% {
+    border-left-color: rgba(220, 20, 60, 0.8);
+    box-shadow: inset 3px 0 12px -4px rgba(220, 20, 60, 0.3);
+  }
+  50% {
+    border-left-color: rgba(212, 175, 55, 0.8);
+    box-shadow: inset 3px 0 12px -4px rgba(212, 175, 55, 0.3);
+  }
+}
+
+.team-row-glow {
+  animation: fade-slide-in 0.35s ease-out both, team-row-glow 4s ease-in-out infinite;
+}
