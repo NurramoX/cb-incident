@@ -34,14 +34,19 @@ export default function Details() {
             Titles will be announced <span class="text-pale-gold font-semibold">1 day before</span> the event on this website
           </RulesBox>
 
-          <RulesBox title="🎵 MUSIC" delay={0.5}>
-            A shared Spotify playlist drops <span class="text-pale-gold font-semibold">3 days before</span> the event — add your bangers and let's vibe together!
-          </RulesBox>
+          <RulesBox title="🎟️ REGISTER NOW!" delay={1}>
 
-          <RulesBox title="🎟️ HOW TO JOIN" delay={1}>
-            <span class="text-pale-gold font-semibold">No entry fee!</span>
+            <br />
+            <span class="text-pale-gold font-semibold">How to join</span>
+
             <br /> <br />
-            Visit this <A href="/game/register" class="text-pale-gold font-semibold text-xl underline">link</A> to register!
+            1. Get access to the <span class="text-pale-gold font-semibold">WhatsApp Group</span>!
+            
+            <br /> <br />
+            2. Copy the <span class="text-pale-gold font-semibold">registration token</span> from the Group Description!
+
+            <br /> <br />
+            3. Visit this <A href="/game/register" class="text-pale-gold font-semibold text-xl underline">link</A> to register!
             <br /><br />
             <span class="text-pale-gold font-semibold">Team Creation</span>
             <br /><br />
@@ -49,6 +54,16 @@ export default function Details() {
             
             <br /><br />
             If you are participating as a team, <span class="text-pale-gold font-bold">both</span> partners must be registered.
+
+            <br /><br />
+            <span class="text-pale-gold font-semibold">Can't find a partner?</span>
+            <br /><br />
+            No worries — you'll be paired with another solo player. But if you'd rather bring a <span class="text-pale-gold font-semibold">+1</span> from outside the group, just message me and I'll add them (as long as it's a good fit for the group)!
+          </RulesBox>
+
+
+          <RulesBox title="🎵 MUSIC" delay={0.5}>
+            A shared Spotify playlist drops <span class="text-pale-gold font-semibold">3 days before</span> the event — add your bangers and let's vibe together!
           </RulesBox>
 
           <RulesBox title="Any Questions or Issues?" delay={1.5}>
