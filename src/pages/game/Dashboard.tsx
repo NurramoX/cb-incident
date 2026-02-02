@@ -1,7 +1,6 @@
 import { createSignal, onMount, For, Show } from 'solid-js'
 import { useNavigate, A } from '@solidjs/router'
-import { fetchProfiles, fetchTeams, logout, isAuthenticated, getCurrentUserId, Profile, Team } from '../../lib/api'
-import ConfirmDialog from '../../components/ConfirmDialog'
+import { fetchProfiles, fetchTeams, isAuthenticated, getCurrentUserId, Profile, Team } from '../../lib/api'
 
 type ViewMode = 'participants' | 'teams'
 
@@ -14,7 +13,6 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = createSignal<ViewMode>('participants')
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
-  const [showLogoutDialog, setShowLogoutDialog] = createSignal(false)
   const [teammateId, setTeammateId] = createSignal<string | null>(null)
 
   // Get set of duplicate first names
@@ -94,11 +92,6 @@ export default function Dashboard() {
     setLoading(false)
   })
 
-  const handleLogout = () => {
-    logout()
-    navigate('/game/login')
-  }
-
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center p-4 pt-8">
       <div class="relative z-10 w-full max-w-3xl flex flex-col items-center gap-6">
@@ -116,24 +109,17 @@ export default function Dashboard() {
             >
               My Team
             </A>
-            <button
-              onClick={() => setShowLogoutDialog(true)}
-              class="font-orbitron text-[0.7rem] text-crimson uppercase tracking-[0.15em] hover:[text-shadow:0_0_8px_var(--color-crimson)] transition-all duration-200"
+            <A
+              href="/game/profile"
+              class="text-pale-gold hover:[filter:drop-shadow(0_0_6px_rgba(212,175,55,0.5))] transition-all duration-200"
             >
-              Logout
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </A>
           </div>
         </div>
-
-        <ConfirmDialog
-          open={showLogoutDialog()}
-          title="Logout"
-          message="Are you sure you want to log out?"
-          confirmText="Logout"
-          variant="danger"
-          onConfirm={handleLogout}
-          onCancel={() => setShowLogoutDialog(false)}
-        />
 
         {/* View Toggle */}
         <div class="flex gap-6">

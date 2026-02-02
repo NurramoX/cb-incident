@@ -145,7 +145,7 @@ export default function TeamPage() {
 
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center p-4 pt-8">
-      <div class="relative z-10 w-full max-w-md flex flex-col items-center gap-6">
+      <div class="relative z-10 w-full max-w-3xl flex flex-col items-center gap-6">
         {/* Header */}
         <div class="w-full flex items-center justify-between">
           <h1 class="font-orbitron font-black text-[1.5rem] text-transparent [-webkit-text-stroke:1px_var(--color-pale-gold)] [text-shadow:0_0_12px_rgba(212,175,55,0.5)] tracking-[0.1em]">

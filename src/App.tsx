@@ -8,6 +8,7 @@ const Register = lazy(() => import('./pages/game/Register'))
 const Login = lazy(() => import('./pages/game/Login'))
 const Dashboard = lazy(() => import('./pages/game/Dashboard'))
 const Team = lazy(() => import('./pages/game/Team'))
+const Profile = lazy(() => import('./pages/game/Profile'))
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/login" component={Login} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/team" component={Team} />
+        <Route path="/profile" component={Profile} />
       </Route>
     </>
   )

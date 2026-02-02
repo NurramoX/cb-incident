@@ -365,3 +365,26 @@ export async function updateTeam(input: UpdateTeamInput): Promise<ApiResponse<{ 
 export async function disbandTeam(): Promise<ApiResponse<{ message: string }>> {
   return callAuthenticatedEdgeFunction<{ message: string }>('team', 'DELETE')
 }
+
+// ============ Profile Management ============
+
+export async function fetchCurrentProfile(): Promise<ApiResponse<Profile>> {
+  return callAuthenticatedEdgeFunction<Profile>('profile', 'GET')
+}
+
+export interface UpdateProfileInput {
+  name: string
+  surname: string
+}
+
+export async function updateProfile(input: UpdateProfileInput): Promise<ApiResponse<Profile>> {
+  return callAuthenticatedEdgeFunction<Profile>('profile', 'PUT', input)
+}
+
+export async function deleteAccount(): Promise<ApiResponse<{ message: string }>> {
+  const result = await callAuthenticatedEdgeFunction<{ message: string }>('profile', 'DELETE')
+  if (!result.error) {
+    logout()
+  }
+  return result
+}
