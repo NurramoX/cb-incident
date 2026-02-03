@@ -388,3 +388,38 @@ export async function deleteAccount(): Promise<ApiResponse<{ message: string }>>
   }
   return result
 }
+
+// ============ Admin ============
+
+export function isAdmin(): boolean {
+  const token = accessToken()
+  if (!token) return false
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.app_metadata?.role === 'admin'
+  } catch {
+    return false
+  }
+}
+
+export async function adminGenerateResetLink(userId: string): Promise<ApiResponse<{ action_link: string }>> {
+  return callAuthenticatedEdgeFunction<{ action_link: string }>('admin', 'POST', {
+    action: 'reset-password',
+    userId,
+  })
+}
+
+export async function adminDeleteUser(userId: string): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('admin', 'POST', {
+    action: 'delete-user',
+    userId,
+  })
+}
+
+export async function adminDeleteTeam(member1: string, member2: string): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('admin', 'POST', {
+    action: 'delete-team',
+    member1,
+    member2,
+  })
+}

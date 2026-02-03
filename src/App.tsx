@@ -9,6 +9,7 @@ const Login = lazy(() => import('./pages/game/Login'))
 const Dashboard = lazy(() => import('./pages/game/Dashboard'))
 const Team = lazy(() => import('./pages/game/Team'))
 const Profile = lazy(() => import('./pages/game/Profile'))
+const ResetPassword = lazy(() => import('./pages/game/ResetPassword'))
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/team" component={Team} />
         <Route path="/profile" component={Profile} />
+        <Route path="/reset-password" component={ResetPassword} />
       </Route>
     </>
   )

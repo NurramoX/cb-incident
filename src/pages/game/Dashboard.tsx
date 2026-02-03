@@ -1,11 +1,13 @@
 import { createSignal, onMount, For, Show } from 'solid-js'
 import { useNavigate, A } from '@solidjs/router'
-import { fetchProfiles, fetchTeams, isAuthenticated, getCurrentUserId, Profile, Team } from '../../lib/api'
+import { fetchProfiles, fetchTeams, isAuthenticated, getCurrentUserId, isAdmin, adminGenerateResetLink, adminDeleteUser, adminDeleteTeam, Profile, Team } from '../../lib/api'
+import ConfirmDialog from '../../components/ConfirmDialog'
 
 type ViewMode = 'participants' | 'teams'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const admin = isAdmin()
 
   const [profiles, setProfiles] = createSignal<Profile[]>([])
   const [teams, setTeams] = createSignal<Team[]>([])
@@ -14,6 +16,12 @@ export default function Dashboard() {
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
   const [teammateId, setTeammateId] = createSignal<string | null>(null)
+
+  // Admin state
+  const [copiedId, setCopiedId] = createSignal<string | null>(null)
+  const [confirmDeleteUser, setConfirmDeleteUser] = createSignal<Profile | null>(null)
+  const [confirmDeleteTeam, setConfirmDeleteTeam] = createSignal<Team | null>(null)
+  const [adminLoading, setAdminLoading] = createSignal(false)
 
   // Get set of duplicate first names
   const getDuplicateNames = () => {
@@ -32,12 +40,7 @@ export default function Dashboard() {
     return `${name} ${surname.charAt(0)}.`
   }
 
-  onMount(async () => {
-    if (!isAuthenticated()) {
-      navigate('/game/login')
-      return
-    }
-
+  const loadData = async () => {
     try {
       const [profilesResult, teamsResult] = await Promise.all([
         fetchProfiles(),
@@ -90,7 +93,57 @@ export default function Dashboard() {
     }
 
     setLoading(false)
+  }
+
+  onMount(async () => {
+    if (!isAuthenticated()) {
+      navigate('/game/login')
+      return
+    }
+    await loadData()
   })
+
+  // Admin actions
+  const handleResetPassword = async (userId: string) => {
+    const result = await adminGenerateResetLink(userId)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    if (result.data?.action_link) {
+      await navigator.clipboard.writeText(result.data.action_link)
+      setCopiedId(userId)
+      setTimeout(() => setCopiedId(null), 2000)
+    }
+  }
+
+  const handleDeleteUser = async () => {
+    const user = confirmDeleteUser()
+    if (!user) return
+    setAdminLoading(true)
+    const result = await adminDeleteUser(user.id)
+    setAdminLoading(false)
+    setConfirmDeleteUser(null)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    await loadData()
+  }
+
+  const handleDeleteTeam = async () => {
+    const team = confirmDeleteTeam()
+    if (!team) return
+    setAdminLoading(true)
+    const result = await adminDeleteTeam(team.member_1, team.member_2)
+    setAdminLoading(false)
+    setConfirmDeleteTeam(null)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    await loadData()
+  }
 
   return (
     <div class="relative w-full min-h-screen flex flex-col items-center p-4 pt-8">
@@ -174,13 +227,18 @@ export default function Dashboard() {
                   <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
                     Name
                   </th>
-                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
+                  <th class={`font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] py-2 px-2 sm:py-3 sm:px-4 ${admin ? 'text-left' : 'text-right'}`}>
                     Team
                   </th>
+                  <Show when={admin}>
+                    <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
+                      Actions
+                    </th>
+                  </Show>
                 </tr>
               </thead>
               <tbody>
-                <For each={profiles()}>
+                <For each={profiles().filter(p => !p.name.toLowerCase().startsWith('test'))}>
                   {(profile, index) => {
                     const userId = getCurrentUserId()
                     const isMe = profile.id === userId
@@ -205,7 +263,7 @@ export default function Dashboard() {
                         <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-white font-semibold' : 'text-white'}`}>
                           {formatName(profile.name, profile.surname)}
                         </td>
-                        <td class="font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 text-right">
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${admin ? 'text-left' : 'text-right'}`}>
                           {teamName ? (
                             <span class={isMyTeam ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/70'}>
                               {teamName}
@@ -214,6 +272,41 @@ export default function Dashboard() {
                             <span class="text-white/30">—</span>
                           )}
                         </td>
+                        <Show when={admin}>
+                          <td class="py-2 px-2 sm:py-3 sm:px-4 text-right">
+                            <Show when={!isMe}>
+                              <div class="flex items-center justify-end gap-4">
+                                {/* Reset password */}
+                                <button
+                                  onClick={() => handleResetPassword(profile.id)}
+                                  title="Copy password reset link"
+                                  class="text-white/30 hover:text-pale-gold transition-colors duration-200"
+                                >
+                                  <Show when={copiedId() === profile.id} fallback={
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 0-7.778zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                                    </svg>
+                                  }>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pale-gold">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  </Show>
+                                </button>
+                                {/* Delete user */}
+                                <button
+                                  onClick={() => setConfirmDeleteUser(profile)}
+                                  title="Delete user"
+                                  class="text-white/30 hover:text-neon-red transition-colors duration-200"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </Show>
+                          </td>
+                        </Show>
                       </tr>
                     )
                   }}
@@ -242,10 +335,15 @@ export default function Dashboard() {
                   <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
                     Members
                   </th>
+                  <Show when={admin}>
+                    <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
+                      Actions
+                    </th>
+                  </Show>
                 </tr>
               </thead>
               <tbody>
-                <For each={teams()}>
+                <For each={teams().filter(t => !t.name.toLowerCase().startsWith('test'))}>
                   {(team, index) => {
                     const userId = getCurrentUserId()
                     const isMyTeam = team.member_1 === userId || team.member_2 === userId
@@ -268,6 +366,22 @@ export default function Dashboard() {
                         <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/70 py-2 px-2 sm:py-3 sm:px-4">
                           {team.member_1_name.split(' ')[0]} & {team.member_2_name.split(' ')[0]}
                         </td>
+                        <Show when={admin}>
+                          <td class="py-2 px-2 sm:py-3 sm:px-4 text-right">
+                            <Show when={!isMyTeam}>
+                              <button
+                                onClick={() => setConfirmDeleteTeam(team)}
+                                title="Delete team"
+                                class="text-white/30 hover:text-neon-red transition-colors duration-200"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                              </button>
+                            </Show>
+                          </td>
+                        </Show>
                       </tr>
                     )
                   }}
@@ -282,6 +396,29 @@ export default function Dashboard() {
             </Show>
           </Show>
         </Show>
+
+        {/* Admin confirm dialogs */}
+        <ConfirmDialog
+          open={!!confirmDeleteUser()}
+          title="Delete User"
+          message={`Delete ${confirmDeleteUser()?.name} ${confirmDeleteUser()?.surname}? This will also remove them from any team.`}
+          confirmText="Delete"
+          variant="danger"
+          loading={adminLoading()}
+          onConfirm={handleDeleteUser}
+          onCancel={() => setConfirmDeleteUser(null)}
+        />
+
+        <ConfirmDialog
+          open={!!confirmDeleteTeam()}
+          title="Delete Team"
+          message={`Delete team "${confirmDeleteTeam()?.name}"?`}
+          confirmText="Delete"
+          variant="danger"
+          loading={adminLoading()}
+          onConfirm={handleDeleteTeam}
+          onCancel={() => setConfirmDeleteTeam(null)}
+        />
       </div>
     </div>
   )
