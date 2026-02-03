@@ -1,9 +1,11 @@
-import { createSignal, onMount, For, Show } from 'solid-js'
+import { createSignal, onMount, onCleanup, For, Show } from 'solid-js'
+import { Timeline, animate, splitText, stagger } from 'animejs'
 import { useNavigate, A } from '@solidjs/router'
 import { fetchProfiles, fetchTeams, isAuthenticated, getCurrentUserId, isAdmin, adminGenerateResetLink, adminDeleteUser, adminDeleteTeam, Profile, Team } from '../../lib/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import Countdown from '../../components/Countdown'
 
-type ViewMode = 'participants' | 'teams'
+type ViewMode = 'participants' | 'teams' | 'battles'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -47,9 +49,18 @@ export default function Dashboard() {
         fetchTeams(),
       ])
 
+      // Filter out TEST data in non-DEV environments
+      const isDev = import.meta.env.VITE_STAGE === 'DEV'
+      const filteredProfiles = isDev
+        ? profilesResult
+        : profilesResult.filter((p) => !p.name.toUpperCase().startsWith('TEST'))
+      const filteredTeams = isDev
+        ? teamsResult
+        : (teamsResult ?? []).filter((t) => !t.name.toUpperCase().startsWith('TEST'))
+
       const userId = getCurrentUserId()
       // Sort teams: user's team first
-      const sortedTeams = [...(teamsResult ?? [])].sort((a, b) => {
+      const sortedTeams = [...(filteredTeams ?? [])].sort((a, b) => {
         const aIsMine = a.member_1 === userId || a.member_2 === userId
         const bIsMine = b.member_1 === userId || b.member_2 === userId
         if (aIsMine && !bIsMine) return -1
@@ -60,7 +71,7 @@ export default function Dashboard() {
 
       // Build a map from profile ID to team name
       const map = new Map<string, string>()
-      for (const team of teamsResult ?? []) {
+      for (const team of filteredTeams ?? []) {
         map.set(team.member_1, team.name)
         map.set(team.member_2, team.name)
       }
@@ -68,7 +79,7 @@ export default function Dashboard() {
 
       // Find user's teammate ID
       if (userId) {
-        const userTeam = (teamsResult ?? []).find(
+        const userTeam = (filteredTeams ?? []).find(
           (t) => t.member_1 === userId || t.member_2 === userId
         )
         if (userTeam) {
@@ -79,14 +90,14 @@ export default function Dashboard() {
       // Sort profiles: current user first, teammate second, then the rest
       const tmId = teammateId()
       const sorted = userId
-        ? [...profilesResult].sort((a, b) => {
+        ? [...filteredProfiles].sort((a, b) => {
             if (a.id === userId) return -1
             if (b.id === userId) return 1
             if (a.id === tmId) return -1
             if (b.id === tmId) return 1
             return 0
           })
-        : profilesResult
+        : filteredProfiles
       setProfiles(sorted)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -202,6 +213,19 @@ export default function Dashboard() {
               viewMode() === 'teams' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
             }`} />
           </button>
+          <button
+            onClick={() => setViewMode('battles')}
+            class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
+              viewMode() === 'battles'
+                ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
+                : 'text-white/40 hover:text-white/60'
+            }`}
+          >
+            Battles
+            <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
+              viewMode() === 'battles' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+            }`} />
+          </button>
         </div>
 
         {/* Content */}
@@ -238,7 +262,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                <For each={profiles().filter(p => !p.name.toLowerCase().startsWith('test'))}>
+                <For each={profiles()}>
                   {(profile, index) => {
                     const userId = getCurrentUserId()
                     const isMe = profile.id === userId
@@ -343,7 +367,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                <For each={teams().filter(t => !t.name.toLowerCase().startsWith('test'))}>
+                <For each={teams()}>
                   {(team, index) => {
                     const userId = getCurrentUserId()
                     const isMyTeam = team.member_1 === userId || team.member_2 === userId
@@ -395,6 +419,11 @@ export default function Dashboard() {
               </div>
             </Show>
           </Show>
+
+          {/* Battles View */}
+          <Show when={viewMode() === 'battles'}>
+            <BattlesContent />
+          </Show>
         </Show>
 
         {/* Admin confirm dialogs */}
@@ -419,6 +448,133 @@ export default function Dashboard() {
           onConfirm={handleDeleteTeam}
           onCancel={() => setConfirmDeleteTeam(null)}
         />
+      </div>
+    </div>
+  )
+}
+
+function BattlesContent() {
+  let triggerTextAnimation: (() => void) | undefined
+
+  return (
+    <div class="w-full flex flex-col items-center justify-center py-16">
+      <AnimatedLock onComplete={() => triggerTextAnimation?.()} />
+      <AnimatedText onReady={(trigger) => { triggerTextAnimation = trigger }} />
+    </div>
+  )
+}
+
+function AnimatedLock(props: { onComplete?: () => void }) {
+  let svgRef: SVGSVGElement | undefined
+  let tl: InstanceType<typeof Timeline> | undefined
+
+  onMount(() => {
+    if (!svgRef) return
+
+    const rect = svgRef.querySelector('rect')
+    const path = svgRef.querySelector('path')
+    if (!rect || !path) return
+
+    tl = new Timeline({
+      defaults: { ease: 'inOutExpo' },
+      onComplete: props.onComplete,
+    })
+
+    // Trace the lock shape - no opacity changes
+    tl.add(rect, {
+      strokeDashoffset: [58, 0],
+      duration: 800,
+    })
+
+    tl.add(path, {
+      strokeDashoffset: [26, 0],
+      duration: 800,
+    }, '-=400')
+  })
+
+  onCleanup(() => {
+    tl?.pause()
+  })
+
+  return (
+    <div class="relative w-20 h-20">
+      <svg
+        ref={svgRef}
+        xmlns="http://www.w3.org/2000/svg"
+        width="80"
+        height="80"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="absolute inset-0 text-pale-gold [filter:drop-shadow(0_0_12px_rgba(212,175,55,0.7))_drop-shadow(0_0_30px_rgba(212,175,55,0.4))]"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" style={{ "stroke-dasharray": "58", "stroke-dashoffset": "58" }} />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" style={{ "stroke-dasharray": "26", "stroke-dashoffset": "26" }} />
+      </svg>
+    </div>
+  )
+}
+
+function AnimatedText(props: { onReady?: (trigger: () => void) => void }) {
+  let containerRef: HTMLDivElement | undefined
+  let labelRef: HTMLSpanElement | undefined
+
+  const startAnimation = () => {
+    if (!containerRef || !labelRef) return
+
+    // Make container visible
+    containerRef.style.opacity = '1'
+
+    // Split the label text into characters
+    const split = splitText(labelRef, { chars: true })
+
+    // Set initial state for chars (hidden)
+    split.chars.forEach((char) => {
+      ;(char as HTMLElement).style.opacity = '0'
+      ;(char as HTMLElement).style.transform = 'translateY(10px)'
+    })
+
+    // Animate characters with stagger
+    animate(split.chars, {
+      opacity: 1,
+      translateY: 0,
+      delay: stagger(40),
+      duration: 400,
+      ease: 'outQuad',
+    })
+
+    // Fade in the timer
+    const timer = containerRef.querySelector('.countdown-timer')
+    if (timer) {
+      animate(timer, {
+        opacity: [0, 1],
+        translateY: [15, 0],
+        duration: 500,
+        delay: 200,
+        ease: 'outQuad',
+      })
+    }
+  }
+
+  onMount(() => {
+    props.onReady?.(startAnimation)
+  })
+
+  return (
+    <div ref={containerRef} class="mt-6" style={{ opacity: 0 }}>
+      <div class="flex flex-col items-center gap-2 mt-2">
+        <span
+          ref={labelRef}
+          class="font-orbitron text-[0.55rem] text-white/40 tracking-[0.2em] uppercase"
+        >
+          Coming in
+        </span>
+        <div class="countdown-timer" style={{ opacity: 0 }}>
+          <Countdown label="" size="large" />
+        </div>
       </div>
     </div>
   )

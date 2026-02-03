@@ -209,3 +209,5 @@ input:-webkit-autofill:focus {
 .team-row-glow {
   animation: fade-slide-in 0.35s ease-out both, team-row-glow 4s ease-in-out infinite;
 }
+
+/* Lock icon animation now handled by anime.js in Dashboard.tsx */

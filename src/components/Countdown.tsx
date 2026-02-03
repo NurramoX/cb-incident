@@ -2,6 +2,7 @@ import { createSignal, onMount, onCleanup } from 'solid-js'
 
 interface CountdownProps {
   label: string
+  size?: 'default' | 'large'
 }
 
 export default function Countdown(props: CountdownProps) {
@@ -33,19 +34,21 @@ export default function Countdown(props: CountdownProps) {
     onCleanup(() => clearInterval(interval))
   })
 
+  const isLarge = () => props.size === 'large'
+
   const Block = (p: { value: string; unit: string }) => (
     <div class="flex flex-col items-center gap-0">
-      <span class="font-[Courier_New,monospace] text-base font-black text-pale-gold leading-none [text-shadow:0_0_8px_var(--color-gold),0_0_15px_rgba(212,175,55,0.5)]">
+      <span class={`font-[Courier_New,monospace] font-black text-pale-gold leading-none [text-shadow:0_0_8px_var(--color-gold),0_0_15px_rgba(212,175,55,0.5)] ${isLarge() ? 'text-2xl' : 'text-base'}`}>
         {p.value}
       </span>
-      <span class="font-orbitron text-[0.35rem] text-crimson [text-shadow:0_0_5px_var(--color-crimson)] mt-0.5">
+      <span class={`font-orbitron text-crimson [text-shadow:0_0_5px_var(--color-crimson)] mt-0.5 ${isLarge() ? 'text-[0.5rem]' : 'text-[0.35rem]'}`}>
         {p.unit}
       </span>
     </div>
   )
 
   const Sep = () => (
-    <span class="font-orbitron text-[0.8rem] text-crimson opacity-40 -mt-1.5">:</span>
+    <span class={`font-orbitron text-crimson opacity-40 -mt-1.5 ${isLarge() ? 'text-xl' : 'text-[0.8rem]'}`}>:</span>
   )
 
   return (
