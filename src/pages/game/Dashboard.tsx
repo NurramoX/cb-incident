@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [profiles, setProfiles] = createSignal<Profile[]>([])
   const [teams, setTeams] = createSignal<Team[]>([])
   const [teamMap, setTeamMap] = createSignal<Map<string, string>>(new Map())
-  const [viewMode, setViewMode] = createSignal<ViewMode>('participants')
+  const [viewMode, setViewMode] = createSignal<ViewMode>('battles')
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
   const [teammateId, setTeammateId] = createSignal<string | null>(null)
@@ -188,16 +188,16 @@ export default function Dashboard() {
         {/* View Toggle */}
         <div class="flex gap-6">
           <button
-            onClick={() => setViewMode('participants')}
+            onClick={() => setViewMode('battles')}
             class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
-              viewMode() === 'participants'
+              viewMode() === 'battles'
                 ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
                 : 'text-white/40 hover:text-white/60'
             }`}
           >
-            Participants
+            Battles
             <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
-              viewMode() === 'participants' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+              viewMode() === 'battles' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
             }`} />
           </button>
           <button
@@ -214,16 +214,16 @@ export default function Dashboard() {
             }`} />
           </button>
           <button
-            onClick={() => setViewMode('battles')}
+            onClick={() => setViewMode('participants')}
             class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
-              viewMode() === 'battles'
+              viewMode() === 'participants'
                 ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
                 : 'text-white/40 hover:text-white/60'
             }`}
           >
-            Battles
+            Participants
             <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
-              viewMode() === 'battles' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+              viewMode() === 'participants' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
             }`} />
           </button>
         </div>
@@ -284,16 +284,16 @@ export default function Dashboard() {
                         <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-crimson' : 'text-white/40'}`}>
                           {String(index() + 1).padStart(2, '0')}
                         </td>
-                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-white font-semibold' : 'text-white'}`}>
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-white font-semibold' : 'text-white/90'}`}>
                           {formatName(profile.name, profile.surname)}
                         </td>
-                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${admin ? 'text-left' : 'text-right'}`}>
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 max-w-40 sm:max-w-52 ${admin ? 'text-left' : 'text-right'}`}>
                           {teamName ? (
-                            <span class={isMyTeam ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/70'}>
+                            <span class={`block truncate ${isMyTeam ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/60'}`}>
                               {teamName}
                             </span>
                           ) : (
-                            <span class="text-white/30">—</span>
+                            <span class="text-white/25">—</span>
                           )}
                         </td>
                         <Show when={admin}>
@@ -356,7 +356,7 @@ export default function Dashboard() {
                   <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
                     Team Name
                   </th>
-                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
+                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
                     Members
                   </th>
                   <Show when={admin}>
@@ -382,12 +382,12 @@ export default function Dashboard() {
                         <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMyTeam ? 'text-pale-gold' : 'text-white/40'}`}>
                           {String(index() + 1).padStart(2, '0')}
                         </td>
-                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${
-                          isMyTeam ? 'text-pale-gold font-semibold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white'
+                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 max-w-40 sm:max-w-52 truncate ${
+                          isMyTeam ? 'text-pale-gold font-semibold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/90'
                         }`}>
                           {team.name}
                         </td>
-                        <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/70 py-2 px-2 sm:py-3 sm:px-4">
+                        <td class="font-rajdhani text-[0.8rem] sm:text-base text-white/60 py-2 px-2 sm:py-3 sm:px-4 text-right">
                           {team.member_1_name.split(' ')[0]} & {team.member_2_name.split(' ')[0]}
                         </td>
                         <Show when={admin}>
@@ -483,7 +483,7 @@ function AnimatedLock(props: { onComplete?: () => void }) {
     // Trace the lock shape - no opacity changes
     tl.add(rect, {
       strokeDashoffset: [58, 0],
-      duration: 800,
+      duration: 1200,
     })
 
     tl.add(path, {
