@@ -1,4 +1,5 @@
-import { createSignal, onMount, onCleanup } from 'solid-js'
+import { createSignal, onMount, onCleanup, createEffect, on } from 'solid-js'
+import { animate } from 'animejs'
 
 interface CountdownProps {
   label: string
@@ -36,34 +37,129 @@ export default function Countdown(props: CountdownProps) {
 
   const isLarge = () => props.size === 'large'
 
-  const Block = (p: { value: string; unit: string }) => (
-    <div class="flex flex-col items-center gap-0">
-      <span class={`font-[Courier_New,monospace] font-black text-pale-gold leading-none [text-shadow:0_0_8px_var(--color-gold),0_0_15px_rgba(212,175,55,0.5)] ${isLarge() ? 'text-2xl' : 'text-base'}`}>
-        {p.value}
-      </span>
-      <span class={`font-orbitron text-crimson [text-shadow:0_0_5px_var(--color-crimson)] mt-0.5 ${isLarge() ? 'text-[0.5rem]' : 'text-[0.35rem]'}`}>
-        {p.unit}
-      </span>
-    </div>
-  )
+  // Animated block with flip-clock transition
+  const AnimatedBlock = (p: { value: () => string; unit: string }) => {
+    let containerRef: HTMLDivElement | undefined
+    let currentRef: HTMLSpanElement | undefined
 
-  const Sep = () => (
-    <span class={`font-orbitron text-crimson opacity-40 -mt-1.5 ${isLarge() ? 'text-xl' : 'text-[0.8rem]'}`}>:</span>
-  )
+    createEffect(on(p.value, (newVal, oldVal) => {
+      if (oldVal !== undefined && newVal !== oldVal && containerRef && currentRef) {
+        // Create outgoing element
+        const outgoing = document.createElement('span')
+        outgoing.textContent = oldVal
+        outgoing.className = currentRef.className
+        outgoing.style.position = 'absolute'
+        outgoing.style.top = '0'
+        outgoing.style.left = '0'
+        outgoing.style.right = '0'
+        outgoing.style.bottom = '0'
+        containerRef.appendChild(outgoing)
+
+        // Set incoming element initial state
+        currentRef.style.transform = 'translateY(60%) scale(0.8)'
+        currentRef.style.opacity = '0'
+        currentRef.style.filter = 'blur(2px)'
+
+        // Animate outgoing up and away with scale
+        animate(outgoing, {
+          translateY: [0, '-60%'],
+          scale: [1, 0.8],
+          opacity: [1, 0],
+          filter: ['blur(0px)', 'blur(2px)'],
+          duration: 300,
+          ease: 'inQuad',
+          complete: () => outgoing.remove()
+        })
+
+        // Animate incoming from below with scale and slight bounce
+        animate(currentRef, {
+          translateY: ['60%', '-3%', '0%'],
+          scale: [0.8, 1.02, 1],
+          opacity: [0, 1, 1],
+          filter: ['blur(2px)', 'blur(0px)', 'blur(0px)'],
+          duration: 400,
+          ease: 'outQuad',
+        })
+      }
+    }))
+
+    return (
+      <div class="flex flex-col items-center gap-0 relative">
+        <div class={`relative ${isLarge() ? 'px-2 py-1' : 'px-1 py-0.5'}`}>
+          <div
+            ref={containerRef}
+            class={`relative overflow-hidden ${isLarge() ? 'h-7' : 'h-5'}`}
+            style={{ width: isLarge() ? '2rem' : '1.5rem' }}
+          >
+            <span
+              ref={currentRef}
+              class={`absolute inset-0 flex items-center justify-center font-[Courier_New,monospace] font-black text-pale-gold leading-none ${isLarge() ? 'text-2xl' : 'text-base'}`}
+            >
+              {p.value()}
+            </span>
+          </div>
+        </div>
+        <span class={`font-orbitron text-crimson [text-shadow:0_0_5px_var(--color-crimson)] mt-1 ${isLarge() ? 'text-[0.5rem]' : 'text-[0.35rem]'}`}>
+          {p.unit}
+        </span>
+      </div>
+    )
+  }
+
+  const Block = (p: { value: () => string; unit: string }) => {
+    return (
+      <div class="flex flex-col items-center gap-0 relative">
+        <div class={`relative ${isLarge() ? 'px-2 py-1' : 'px-1 py-0.5'}`}>
+          <span
+            class={`relative font-[Courier_New,monospace] font-black text-pale-gold leading-none ${isLarge() ? 'text-2xl' : 'text-base'}`}
+          >
+            {p.value()}
+          </span>
+        </div>
+        <span class={`font-orbitron text-crimson [text-shadow:0_0_5px_var(--color-crimson)] mt-1 ${isLarge() ? 'text-[0.5rem]' : 'text-[0.35rem]'}`}>
+          {p.unit}
+        </span>
+      </div>
+    )
+  }
+
+  const Sep = () => {
+    let sepRef: HTMLSpanElement | undefined
+
+    onMount(() => {
+      if (sepRef) {
+        animate(sepRef, {
+          opacity: [0.4, 0.8, 0.4],
+          duration: 1000,
+          loop: true,
+          ease: 'inOutSine',
+        })
+      }
+    })
+
+    return (
+      <span
+        ref={sepRef}
+        class={`font-orbitron text-crimson -mt-1.5 ${isLarge() ? 'text-xl' : 'text-[0.8rem]'}`}
+      >
+        :
+      </span>
+    )
+  }
 
   return (
     <div class="flex flex-col items-center gap-2 mt-2">
       <span class="font-orbitron text-[0.55rem] text-white/40 tracking-[0.2em] uppercase">
         {props.label}
       </span>
-      <div class="flex items-center gap-1.5">
-        <Block value={days()} unit="D" />
+      <div class="flex items-center gap-2">
+        <Block value={days} unit="DAYS" />
         <Sep />
-        <Block value={hours()} unit="H" />
+        <Block value={hours} unit="HRS" />
         <Sep />
-        <Block value={minutes()} unit="M" />
+        <AnimatedBlock value={minutes} unit="MIN" />
         <Sep />
-        <Block value={seconds()} unit="S" />
+        <AnimatedBlock value={seconds} unit="SEC" />
       </div>
     </div>
   )

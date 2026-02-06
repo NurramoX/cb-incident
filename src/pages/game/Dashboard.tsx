@@ -477,10 +477,10 @@ function AnimatedLock(props: { onComplete?: () => void }) {
 
     tl = new Timeline({
       defaults: { ease: 'inOutExpo' },
-      onComplete: props.onComplete,
+      onComplete: () => props.onComplete?.(),
     })
 
-    // Trace the lock shape - no opacity changes
+    // Trace the lock shape
     tl.add(rect, {
       strokeDashoffset: [58, 0],
       duration: 1200,
@@ -497,19 +497,19 @@ function AnimatedLock(props: { onComplete?: () => void }) {
   })
 
   return (
-    <div class="relative w-20 h-20">
+    <div class="relative w-20 h-20 flex items-center justify-center">
       <svg
         ref={svgRef}
         xmlns="http://www.w3.org/2000/svg"
-        width="80"
-        height="80"
+        width="64"
+        height="64"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
         stroke-width="1.5"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="absolute inset-0 text-pale-gold [filter:drop-shadow(0_0_12px_rgba(212,175,55,0.7))_drop-shadow(0_0_30px_rgba(212,175,55,0.4))]"
+        class="text-pale-gold filter-[drop-shadow(0_0_12px_rgba(212,175,55,0.7))_drop-shadow(0_0_30px_rgba(212,175,55,0.4))]"
       >
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" style={{ "stroke-dasharray": "58", "stroke-dashoffset": "58" }} />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" style={{ "stroke-dasharray": "26", "stroke-dashoffset": "26" }} />
