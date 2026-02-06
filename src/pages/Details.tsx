@@ -34,31 +34,16 @@ export default function Details() {
             Titles will be announced <span class="text-pale-gold font-semibold">1 day before</span> the event on this website
           </RulesBox>
 
-          <RulesBox title="🎟️ REGISTER NOW!" delay={1}>
+          <RulesBox title="🎟️ REGISTRATIONS CLOSED" delay={1}>
+            Registrations are now closed. Thank you to everyone who signed up!
+            <br /><br />
+            Already registered? <A href="/game/login" class="text-pale-gold font-semibold underline">Login here</A> to manage your team.
+          </RulesBox>
 
-            <br />
-            <span class="text-pale-gold font-semibold">How to join</span>
-
-            <br /> <br />
-            1. Get access to the <span class="text-pale-gold font-semibold">WhatsApp Group</span>!
-            
-            <br /> <br />
-            2. Copy the <span class="text-pale-gold font-semibold">registration token</span> from the Group Description!
-
-            <br /> <br />
-            3. Visit this <A href="/game/register" class="text-pale-gold font-semibold text-xl underline">link</A> to register!
+          <RulesBox title="🎮 THE GAMES" delay={0.75}>
+            Want to know what you'll be playing?
             <br /><br />
-            <span class="text-pale-gold font-semibold">Team Creation</span>
-            <br /><br />
-            Navigate to <span class="text-pale-gold font-bold">My Team</span> on your dashboard to set your team name and select your partner.
-            
-            <br /><br />
-            If you are participating as a team, <span class="text-pale-gold font-bold">both</span> partners must be registered.
-
-            <br /><br />
-            <span class="text-pale-gold font-semibold">Can't find a partner?</span>
-            <br /><br />
-            No worries — you'll be paired with another solo player. But if you'd rather bring a <span class="text-pale-gold font-semibold">+1</span> from outside the group, just message me and I'll add them (as long as it's a good fit for the group)!
+            <A href="/games" class="text-pale-gold font-semibold text-xl underline">View all games →</A>
           </RulesBox>
 
 

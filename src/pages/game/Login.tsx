@@ -1,4 +1,4 @@
-import { action, useSubmission, A, redirect, useNavigate } from '@solidjs/router'
+import { action, useSubmission, redirect, useNavigate } from '@solidjs/router'
 import { createSignal, createEffect, onMount } from 'solid-js'
 import { login, isAuthenticated } from '../../lib/api'
 
@@ -85,10 +85,7 @@ export default function Login() {
         </form>
 
         <div class="text-[0.9rem] text-white/50 text-center mt-4">
-          Don't have an account?{' '}
-          <A href="/game/register" class="text-pale-gold no-underline transition-all duration-200 hover:[text-shadow:0_0_10px_rgba(212,175,55,0.5)]">
-            Register here
-          </A>
+          Registrations are closed.
         </div>
       </div>
     </div>

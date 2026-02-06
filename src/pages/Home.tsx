@@ -54,13 +54,19 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Details Link */}
-          <div class="font-rajdhani text-[0.9rem] text-[#888] text-center mt-1">
+          {/* Navigation Links */}
+          <div class="flex gap-4 font-rajdhani text-[0.9rem] text-[#888] text-center mt-1">
             <A
               href="/details"
               class="text-[#888] no-underline transition-all duration-300 px-3 py-1.5 border border-transparent text-[0.85rem] hover:text-pale-gold hover:border-crimson hover:bg-crimson/10"
             >
               <span class="text-pale-gold">*</span> More details →
+            </A>
+            <A
+              href="/games"
+              class="text-[#888] no-underline transition-all duration-300 px-3 py-1.5 border border-transparent text-[0.85rem] hover:text-pale-gold hover:border-crimson hover:bg-crimson/10"
+            >
+              🎮 The Games →
             </A>
           </div>
 
