@@ -20,7 +20,7 @@ export default function EventInfo() {
       {/* Time & Location */}
       <div class="flex flex-col gap-1">
         <div class="font-orbitron text-[1.4rem] font-bold text-white [text-shadow:0_0_10px_rgba(255,255,255,0.3)]">
-          20:30
+          21:00
         </div>
         <div class="font-rajdhani text-base text-white/70 font-medium">
           Club Berlin · Raum C
