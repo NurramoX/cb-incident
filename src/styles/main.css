@@ -210,4 +210,46 @@ input:-webkit-autofill:focus {
   animation: fade-slide-in 0.35s ease-out both, team-row-glow 4s ease-in-out infinite;
 }
 
-/* Lock icon animation now handled by anime.js in Dashboard.tsx */
+/* Lock button tracing glow */
+@keyframes lock-trace {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.lock-glow {
+  position: relative;
+  z-index: 0;
+  border: none !important;
+}
+
+.lock-glow::before {
+  content: "";
+  position: absolute;
+  top: -1.5px;
+  left: -1.5px;
+  width: calc(100% + 3px);
+  height: calc(100% + 3px);
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(240, 230, 140, 0.1) 20%,
+    rgba(212, 175, 55, 0.8) 45%,
+    rgba(240, 230, 140, 1) 50%,
+    rgba(212, 175, 55, 0.8) 55%,
+    rgba(240, 230, 140, 0.1) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: lock-trace 2s linear infinite;
+}
+
+.lock-glow::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: #0a0505;
+  border-radius: inherit;
+}

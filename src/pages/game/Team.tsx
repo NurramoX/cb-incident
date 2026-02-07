@@ -5,14 +5,13 @@ import {
   fetchTeams,
   createTeam,
   updateTeam,
-  disbandTeam,
   isAuthenticated,
   getCurrentUserId,
   Profile,
   Team,
 } from '../../lib/api'
 import Combobox, { ComboboxOption } from '../../components/Combobox'
-import ConfirmDialog from '../../components/ConfirmDialog'
+
 
 export default function TeamPage() {
   const navigate = useNavigate()
@@ -28,7 +27,6 @@ export default function TeamPage() {
   const [teamName, setTeamName] = createSignal('')
   const [selectedPartner, setSelectedPartner] = createSignal('')
   const [editMode, setEditMode] = createSignal(false)
-  const [showTerminateDialog, setShowTerminateDialog] = createSignal(false)
 
   const userId = getCurrentUserId()
 
@@ -125,21 +123,6 @@ export default function TeamPage() {
     setSubmitting(false)
   }
 
-  const handleDisband = async () => {
-    setShowTerminateDialog(false)
-    setSubmitting(true)
-    setError('')
-
-    const result = await disbandTeam()
-
-    if (result.error) {
-      setError(result.error)
-      setSubmitting(false)
-      return
-    }
-
-    navigate('/game/dashboard')
-  }
 
   const formatName = (name: string, surname: string) => `${name} ${surname.charAt(0)}.`
 
@@ -260,16 +243,9 @@ export default function TeamPage() {
         <div class="flex h-12 border-t border-crimson/20">
           <button
             onClick={() => setEditMode(true)}
-            class="flex-1 font-orbitron text-[0.7rem] text-pale-gold uppercase tracking-[0.2em] hover:bg-pale-gold/10 hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200 border-r border-crimson/20"
+            class="flex-1 font-orbitron text-[0.7rem] text-pale-gold uppercase tracking-[0.2em] hover:bg-pale-gold/10 hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200"
           >
             Modify
-          </button>
-          <button
-            onClick={() => setShowTerminateDialog(true)}
-            disabled={submitting()}
-            class="flex-1 font-orbitron text-[0.7rem] text-crimson uppercase tracking-[0.2em] hover:bg-crimson/10 hover:[text-shadow:0_0_8px_var(--color-crimson)] transition-all duration-200 disabled:opacity-50"
-          >
-            {submitting() ? '...' : 'Terminate'}
           </button>
         </div>
       </div>
@@ -309,17 +285,6 @@ export default function TeamPage() {
         </div>
       </div>
     </Show>
-
-    <ConfirmDialog
-      open={showTerminateDialog()}
-      title="Terminate Team"
-      message="Are you sure you want to disband your team? This action cannot be undone."
-      confirmText="Terminate"
-      variant="danger"
-      loading={submitting()}
-      onConfirm={handleDisband}
-      onCancel={() => setShowTerminateDialog(false)}
-    />
 
   </div>
 </Show>

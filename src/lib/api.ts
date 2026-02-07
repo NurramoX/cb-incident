@@ -389,6 +389,69 @@ export async function deleteAccount(): Promise<ApiResponse<{ message: string }>>
   return result
 }
 
+// ============ Battles ============
+
+export interface BattleTeamMember {
+  id: string
+  name: string
+}
+
+export interface BattleTeam {
+  name: string
+  state: 'pending' | 'won' | 'lost'
+  result_locked: boolean
+  members: BattleTeamMember[]
+}
+
+export interface Battle {
+  id: string
+  battle: string
+  my_team: BattleTeam
+  opponent: BattleTeam
+}
+
+export async function fetchBattles(): Promise<ApiResponse<{ battles: Battle[] }>> {
+  try {
+    const token = await ensureValidToken()
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/battle`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return { error: data.error || 'Failed to fetch battles' }
+    }
+
+    return { data }
+  } catch (err) {
+    if (err instanceof Error && (err.message === 'Not authenticated' || err.message === 'Session expired')) {
+      return { error: err.message }
+    }
+    return { error: 'Network error' }
+  }
+}
+
+export async function setBattleResult(battleId: string, result: 'won' | 'lost'): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('battle', 'PUT', {
+    action: 'set_result',
+    battle_id: battleId,
+    result,
+  })
+}
+
+export async function lockBattleResult(battleId: string): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('battle', 'PUT', {
+    action: 'lock_result',
+    battle_id: battleId,
+  })
+}
+
 // ============ Admin ============
 
 export function isAdmin(): boolean {

@@ -20,7 +20,7 @@ export default function Games() {
             </div>
           </div>
 
-          <GameCard title="🍺 FLIP CUP RELAY" index={0}>
+          <GameCard title="🥤 FLIP CUP RELAY" index={0}>
             Classic flip cup — but with a twist!
             <br /><br />
             After each successful flip, the player who flipped <span class="text-pale-gold font-semibold">switches out</span> with their teammate. Keep the relay going!

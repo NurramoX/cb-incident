@@ -1,6 +1,6 @@
 import { createSignal, onMount, Show } from 'solid-js'
 import { useNavigate, A } from '@solidjs/router'
-import { isAuthenticated, fetchCurrentProfile, updateProfile, deleteAccount, logout, getCurrentUserId, getSupabaseClient, Profile as ProfileType } from '../../lib/api'
+import { isAuthenticated, fetchCurrentProfile, updateProfile, logout, Profile as ProfileType } from '../../lib/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
 export default function Profile() {
@@ -11,12 +11,9 @@ export default function Profile() {
   const [surname, setSurname] = createSignal('')
   const [loading, setLoading] = createSignal(true)
   const [saving, setSaving] = createSignal(false)
-  const [deleting, setDeleting] = createSignal(false)
   const [error, setError] = createSignal('')
   const [success, setSuccess] = createSignal('')
   const [showLogoutDialog, setShowLogoutDialog] = createSignal(false)
-  const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
-  const [hasTeam, setHasTeam] = createSignal(false)
 
   onMount(async () => {
     if (!isAuthenticated()) {
@@ -24,12 +21,7 @@ export default function Profile() {
       return
     }
 
-    const userId = getCurrentUserId()
-
-    const [profileResult, client] = await Promise.all([
-      fetchCurrentProfile(),
-      getSupabaseClient(),
-    ])
+    const profileResult = await fetchCurrentProfile()
 
     if (profileResult.error) {
       setError(profileResult.error)
@@ -37,14 +29,6 @@ export default function Profile() {
       setProfile(profileResult.data)
       setName(profileResult.data.name)
       setSurname(profileResult.data.surname)
-    }
-
-    if (userId && client) {
-      const { count } = await client
-        .from('team')
-        .select('*', { count: 'exact', head: true })
-        .or(`member_1.eq.${userId},member_2.eq.${userId}`)
-      setHasTeam((count ?? 0) > 0)
     }
 
     setLoading(false)
@@ -80,18 +64,6 @@ export default function Profile() {
   const handleLogout = () => {
     logout()
     navigate('/game/login')
-  }
-
-  const handleDelete = async () => {
-    setDeleting(true)
-    const result = await deleteAccount()
-    if (result.error) {
-      setError(result.error)
-      setDeleting(false)
-      setShowDeleteDialog(false)
-    } else {
-      navigate('/')
-    }
   }
 
   const hasChanges = () => {
@@ -195,12 +167,6 @@ export default function Profile() {
               LOGOUT
             </button>
 
-            <button
-              onClick={() => setShowDeleteDialog(true)}
-              class="font-orbitron text-[0.65rem] text-white/30 uppercase tracking-[0.15em] py-2 hover:text-neon-red transition-all duration-200"
-            >
-              Delete Account
-            </button>
           </div>
         </Show>
 
@@ -214,19 +180,6 @@ export default function Profile() {
           onCancel={() => setShowLogoutDialog(false)}
         />
 
-        <ConfirmDialog
-          open={showDeleteDialog()}
-          title="Delete Account"
-          message={hasTeam()
-            ? "This will permanently delete your account and dissolve your team. This action cannot be undone."
-            : "This will permanently delete your account. This action cannot be undone."
-          }
-          confirmText="Delete"
-          variant="danger"
-          loading={deleting()}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteDialog(false)}
-        />
       </div>
     </div>
   )
