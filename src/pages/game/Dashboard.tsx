@@ -647,7 +647,7 @@ function AnimatedText(props: { onReady?: (trigger: () => void) => void; onComple
           ref={labelRef}
           class="font-orbitron text-[0.55rem] text-white/40 tracking-[0.2em] uppercase"
         >
-          Battles begin in
+          Matchups revealed in
         </span>
         <div class="countdown-timer" style={{ opacity: 0 }}>
           <Countdown label="" size="large" onComplete={props.onComplete} />
