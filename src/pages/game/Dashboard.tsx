@@ -1,14 +1,14 @@
 import { createSignal, onMount, onCleanup, For, Show } from 'solid-js'
 import { Timeline, animate, splitText, stagger } from 'animejs'
 import { useNavigate, A } from '@solidjs/router'
-import { fetchProfiles, fetchTeams, fetchBattles, setBattleResult, lockBattleResult, isAuthenticated, getCurrentUserId, isAdmin, adminSetPassword, adminFetchEmails, adminDeleteUser, adminDeleteTeam, Profile, Team, Battle } from '../../lib/api'
+import { fetchProfiles, fetchTeams, fetchBattles, fetchLeaderboard, setBattleResult, lockBattleResult, isAuthenticated, getCurrentUserId, isAdmin, adminSetPassword, adminFetchEmails, adminDeleteUser, adminDeleteTeam, Profile, Team, Battle, LeaderboardEntry } from '../../lib/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Countdown from '../../components/Countdown'
 
-const EVENT_TIME = new Date('2026-02-07T17:57:50').getTime()
-const RESULTS_TIME = new Date('2026-02-07T17:58:30').getTime()
+const EVENT_TIME = new Date('2026-02-07T20:30:00').getTime()
+const RESULTS_TIME = new Date('2026-02-07T22:30:00').getTime()
 
-type ViewMode = 'participants' | 'teams' | 'battles'
+type ViewMode = 'participants' | 'teams' | 'battles' | 'leaderboard'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -193,10 +193,10 @@ export default function Dashboard() {
         </div>
 
         {/* View Toggle */}
-        <div class="flex gap-6">
+        <div class="flex gap-4 sm:gap-6 overflow-x-auto w-full justify-center">
           <button
             onClick={() => setViewMode('battles')}
-            class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
+            class={`relative font-orbitron text-[0.6rem] sm:text-[0.75rem] uppercase tracking-[0.1em] sm:tracking-[0.15em] pb-2.5 whitespace-nowrap transition-all duration-300 ${
               viewMode() === 'battles'
                 ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
                 : 'text-white/40 hover:text-white/60'
@@ -209,7 +209,7 @@ export default function Dashboard() {
           </button>
           <button
             onClick={() => setViewMode('teams')}
-            class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
+            class={`relative font-orbitron text-[0.6rem] sm:text-[0.75rem] uppercase tracking-[0.1em] sm:tracking-[0.15em] pb-2.5 whitespace-nowrap transition-all duration-300 ${
               viewMode() === 'teams'
                 ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
                 : 'text-white/40 hover:text-white/60'
@@ -222,8 +222,21 @@ export default function Dashboard() {
           </button>
           <Show when={admin}>
             <button
+              onClick={() => setViewMode('leaderboard')}
+              class={`relative font-orbitron text-[0.6rem] sm:text-[0.75rem] uppercase tracking-[0.1em] sm:tracking-[0.15em] pb-2.5 whitespace-nowrap transition-all duration-300 ${
+                viewMode() === 'leaderboard'
+                  ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              Leaderboard
+              <span class={`absolute bottom-0 left-0 right-0 h-0.5 bg-crimson transition-all duration-300 [box-shadow:0_0_10px_rgba(220,20,60,0.5)] ${
+                viewMode() === 'leaderboard' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+              }`} />
+            </button>
+            <button
               onClick={() => setViewMode('participants')}
-              class={`relative font-orbitron text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.15em] pb-2.5 transition-all duration-300 ${
+              class={`relative font-orbitron text-[0.6rem] sm:text-[0.75rem] uppercase tracking-[0.1em] sm:tracking-[0.15em] pb-2.5 whitespace-nowrap transition-all duration-300 ${
                 viewMode() === 'participants'
                   ? 'text-crimson [text-shadow:0_0_8px_var(--color-crimson)]'
                   : 'text-white/40 hover:text-white/60'
@@ -420,6 +433,11 @@ export default function Dashboard() {
                 No teams yet
               </div>
             </Show>
+          </Show>
+
+          {/* Leaderboard View (admin only) */}
+          <Show when={admin && viewMode() === 'leaderboard'}>
+            <LeaderboardView />
           </Show>
 
           {/* Battles View */}
@@ -848,6 +866,98 @@ function BattlesList() {
         onConfirm={handleLockResult}
         onCancel={() => setConfirmLock(null)}
       />
+    </div>
+  )
+}
+
+function LeaderboardView() {
+  const [leaderboard, setLeaderboard] = createSignal<LeaderboardEntry[]>([])
+  const [loading, setLoading] = createSignal(true)
+  const [error, setError] = createSignal('')
+
+  onMount(async () => {
+    const result = await fetchLeaderboard()
+    if (result.error) {
+      setError(result.error)
+    } else if (result.data) {
+      setLeaderboard(result.data.leaderboard)
+    }
+    setLoading(false)
+  })
+
+  return (
+    <div class="w-full">
+      <Show when={loading()}>
+        <div class="text-white/50 font-rajdhani text-center py-8">Loading leaderboard...</div>
+      </Show>
+
+      <Show when={error()}>
+        <div class="bg-blood-red/30 border border-blood-red text-neon-red py-2.5 px-3.5 text-[0.9rem] text-center">
+          {error()}
+        </div>
+      </Show>
+
+      <Show when={!loading() && !error()}>
+        <Show when={leaderboard().length === 0}>
+          <div class="text-white/50 font-rajdhani text-center py-8">
+            No results yet
+          </div>
+        </Show>
+
+        <table class="w-full border-collapse">
+          <Show when={leaderboard().length > 0}>
+            <thead>
+              <tr class="border-b border-crimson/40">
+                <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
+                  #
+                </th>
+                <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
+                  Team
+                </th>
+                <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
+                  W
+                </th>
+                <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
+                  L
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={leaderboard()}>
+                {(entry, index) => {
+                  const rank = index() + 1
+
+                  return (
+                    <tr
+                      class={`border-b border-crimson/20 hover:bg-crimson/5 transition-colors duration-200 row-stagger ${
+                        rank <= 3 ? 'bg-crimson/5' : ''
+                      }`}
+                      style={{ "animation-delay": `${index() * 50}ms` }}
+                    >
+                      <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${
+                        rank === 1 ? 'text-pale-gold font-bold' : rank <= 3 ? 'text-pale-gold/70' : 'text-white/40'
+                      }`}>
+                        {String(rank).padStart(2, '0')}
+                      </td>
+                      <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 max-w-40 sm:max-w-52 truncate ${
+                        rank === 1 ? 'text-pale-gold font-semibold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/90'
+                      }`}>
+                        {entry.team}
+                      </td>
+                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-[#90EE90] py-2 px-2 sm:py-3 sm:px-4 text-right">
+                        {entry.wins}
+                      </td>
+                      <td class="font-rajdhani text-[0.8rem] sm:text-base text-neon-red py-2 px-2 sm:py-3 sm:px-4 text-right">
+                        {entry.losses}
+                      </td>
+                    </tr>
+                  )
+                }}
+              </For>
+            </tbody>
+          </Show>
+        </table>
+      </Show>
     </div>
   )
 }

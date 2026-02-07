@@ -8,7 +8,7 @@ interface CountdownProps {
 }
 
 export default function Countdown(props: CountdownProps) {
-  const eventDate = new Date('2026-02-07T17:57:50').getTime()
+  const eventDate = new Date('2026-02-07T20:30:00').getTime()
 
   const [days, setDays] = createSignal('00')
   const [hours, setHours] = createSignal('00')

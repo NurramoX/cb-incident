@@ -445,6 +445,39 @@ export async function setBattleResult(battleId: string, result: 'won' | 'lost'):
   })
 }
 
+export interface LeaderboardEntry {
+  team: string
+  wins: number
+  losses: number
+}
+
+export async function fetchLeaderboard(): Promise<ApiResponse<{ leaderboard: LeaderboardEntry[] }>> {
+  try {
+    const token = await ensureValidToken()
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/battle?view=leaderboard`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return { error: data.error || 'Failed to fetch leaderboard' }
+    }
+
+    return { data }
+  } catch (err) {
+    if (err instanceof Error && (err.message === 'Not authenticated' || err.message === 'Session expired')) {
+      return { error: err.message }
+    }
+    return { error: 'Network error' }
+  }
+}
+
 export async function lockBattleResult(battleId: string): Promise<ApiResponse<{ message: string }>> {
   return callAuthenticatedEdgeFunction<{ message: string }>('battle', 'PUT', {
     action: 'lock_result',
