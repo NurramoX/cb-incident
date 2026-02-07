@@ -127,7 +127,7 @@ export default function Dashboard() {
     if (result.data?.action_link) {
       // Override redirect_to so the link points to the current site, not the Supabase-configured Site URL
       const url = new URL(result.data.action_link)
-      url.searchParams.set('redirect_to', window.location.origin)
+      url.searchParams.set('redirect_to', window.location.origin + '/')
       await navigator.clipboard.writeText(url.toString())
       setCopiedId(userId)
       setTimeout(() => setCopiedId(null), 2000)
