@@ -1,12 +1,12 @@
 import { createSignal, onMount, onCleanup, For, Show } from 'solid-js'
 import { Timeline, animate, splitText, stagger } from 'animejs'
 import { useNavigate, A } from '@solidjs/router'
-import { fetchProfiles, fetchTeams, fetchBattles, setBattleResult, lockBattleResult, isAuthenticated, getCurrentUserId, isAdmin, adminGenerateResetLink, adminDeleteUser, adminDeleteTeam, Profile, Team, Battle } from '../../lib/api'
+import { fetchProfiles, fetchTeams, fetchBattles, setBattleResult, lockBattleResult, isAuthenticated, getCurrentUserId, isAdmin, adminSetPassword, adminFetchEmails, adminDeleteUser, adminDeleteTeam, Profile, Team, Battle } from '../../lib/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Countdown from '../../components/Countdown'
 
-const EVENT_TIME = new Date('2026-02-07T20:30:00').getTime()
-const RESULTS_TIME = new Date('2026-02-07T22:30:00').getTime()
+const EVENT_TIME = new Date('2026-02-07T17:57:50').getTime()
+const RESULTS_TIME = new Date('2026-02-07T17:58:30').getTime()
 
 type ViewMode = 'participants' | 'teams' | 'battles'
 
@@ -16,14 +16,16 @@ export default function Dashboard() {
 
   const [profiles, setProfiles] = createSignal<Profile[]>([])
   const [teams, setTeams] = createSignal<Team[]>([])
-  const [teamMap, setTeamMap] = createSignal<Map<string, string>>(new Map())
   const [viewMode, setViewMode] = createSignal<ViewMode>('battles')
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
   const [teammateId, setTeammateId] = createSignal<string | null>(null)
 
   // Admin state
-  const [copiedId, setCopiedId] = createSignal<string | null>(null)
+  const [emailMap, setEmailMap] = createSignal<Record<string, string>>({})
+  const [setPasswordUser, setSetPasswordUser] = createSignal<Profile | null>(null)
+  const [newPassword, setNewPassword] = createSignal('')
+  const [passwordSuccess, setPasswordSuccess] = createSignal<string | null>(null)
   const [confirmDeleteUser, setConfirmDeleteUser] = createSignal<Profile | null>(null)
   const [confirmDeleteTeam, setConfirmDeleteTeam] = createSignal<Team | null>(null)
   const [adminLoading, setAdminLoading] = createSignal(false)
@@ -72,14 +74,6 @@ export default function Dashboard() {
       })
       setTeams(sortedTeams)
 
-      // Build a map from profile ID to team name
-      const map = new Map<string, string>()
-      for (const team of filteredTeams ?? []) {
-        map.set(team.member_1, team.name)
-        map.set(team.member_2, team.name)
-      }
-      setTeamMap(map)
-
       // Find user's teammate ID
       if (userId) {
         const userTeam = (filteredTeams ?? []).find(
@@ -102,6 +96,12 @@ export default function Dashboard() {
           })
         : filteredProfiles
       setProfiles(sorted)
+
+      // Fetch emails for admin view
+      if (admin) {
+        const emailResult = await adminFetchEmails()
+        if (emailResult.data) setEmailMap(emailResult.data.emails)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     }
@@ -118,20 +118,21 @@ export default function Dashboard() {
   })
 
   // Admin actions
-  const handleResetPassword = async (userId: string) => {
-    const result = await adminGenerateResetLink(userId)
+  const handleSetPassword = async () => {
+    const user = setPasswordUser()
+    const pw = newPassword().trim()
+    if (!user || !pw) return
+    setAdminLoading(true)
+    const result = await adminSetPassword(user.id, pw)
+    setAdminLoading(false)
     if (result.error) {
       setError(result.error)
       return
     }
-    if (result.data?.action_link) {
-      // Override redirect_to so the link points to the current site, not the Supabase-configured Site URL
-      const url = new URL(result.data.action_link)
-      url.searchParams.set('redirect_to', window.location.origin + '/')
-      await navigator.clipboard.writeText(url.toString())
-      setCopiedId(userId)
-      setTimeout(() => setCopiedId(null), 2000)
-    }
+    setSetPasswordUser(null)
+    setNewPassword('')
+    setPasswordSuccess(user.id)
+    setTimeout(() => setPasswordSuccess(null), 2000)
   }
 
   const handleDeleteUser = async () => {
@@ -259,8 +260,8 @@ export default function Dashboard() {
                   <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
                     Name
                   </th>
-                  <th class={`font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] py-2 px-2 sm:py-3 sm:px-4 ${admin ? 'text-left' : 'text-right'}`}>
-                    Team
+                  <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-left py-2 px-2 sm:py-3 sm:px-4">
+                    Email
                   </th>
                   <Show when={admin}>
                     <th class="font-orbitron text-[0.55rem] sm:text-[0.7rem] text-crimson uppercase tracking-[0.1em] sm:tracking-[0.15em] text-right py-2 px-2 sm:py-3 sm:px-4">
@@ -275,9 +276,6 @@ export default function Dashboard() {
                     const userId = getCurrentUserId()
                     const isMe = profile.id === userId
                     const isMate = profile.id === teammateId()
-                    const isMyTeam = teamMap().get(profile.id) && teamMap().get(profile.id) === teamMap().get(userId ?? '')
-                    const teamName = teamMap().get(profile.id)
-
                     const hasTeam = !!teammateId()
 
                     return (
@@ -295,26 +293,22 @@ export default function Dashboard() {
                         <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 ${isMe ? 'text-white font-semibold' : 'text-white/90'}`}>
                           {formatName(profile.name, profile.surname)}
                         </td>
-                        <td class={`font-rajdhani text-[0.8rem] sm:text-base py-2 px-2 sm:py-3 sm:px-4 max-w-40 sm:max-w-52 ${admin ? 'text-left' : 'text-right'}`}>
-                          {teamName ? (
-                            <span class={`block truncate ${isMyTeam ? 'text-pale-gold [text-shadow:0_0_6px_rgba(212,175,55,0.4)]' : 'text-white/60'}`}>
-                              {teamName}
-                            </span>
-                          ) : (
-                            <span class="text-white/25">—</span>
-                          )}
+                        <td class="font-rajdhani text-[0.7rem] sm:text-sm py-2 px-2 sm:py-3 sm:px-4 text-left max-w-40 sm:max-w-52">
+                          <span class="block truncate text-white/50">
+                            {emailMap()[profile.id] ?? '—'}
+                          </span>
                         </td>
                         <Show when={admin}>
                           <td class="py-2 px-2 sm:py-3 sm:px-4 text-right">
                             <Show when={!isMe}>
                               <div class="flex items-center justify-end gap-4">
-                                {/* Reset password */}
+                                {/* Set password */}
                                 <button
-                                  onClick={() => handleResetPassword(profile.id)}
-                                  title="Copy password reset link"
+                                  onClick={() => { setSetPasswordUser(profile); setNewPassword('') }}
+                                  title="Set password"
                                   class="text-white/30 hover:text-pale-gold transition-colors duration-200"
                                 >
-                                  <Show when={copiedId() === profile.id} fallback={
+                                  <Show when={passwordSuccess() === profile.id} fallback={
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 0-7.778zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
                                     </svg>
@@ -432,6 +426,48 @@ export default function Dashboard() {
           <Show when={viewMode() === 'battles'}>
             <BattlesContent />
           </Show>
+        </Show>
+
+        {/* Set password dialog */}
+        <Show when={setPasswordUser()}>
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSetPasswordUser(null)} />
+            <div class="relative w-full max-w-sm bg-dark-bg border border-pale-gold/40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div class="p-5 border-b border-pale-gold/20">
+                <h2 class="font-orbitron text-[0.85rem] text-pale-gold uppercase tracking-[0.15em]">
+                  Set Password
+                </h2>
+                <p class="font-rajdhani text-white/50 text-sm mt-1">
+                  {setPasswordUser()!.name} {setPasswordUser()!.surname}
+                </p>
+              </div>
+              <div class="p-5">
+                <input
+                  type="text"
+                  value={newPassword()}
+                  onInput={(e) => setNewPassword(e.currentTarget.value)}
+                  placeholder="New password"
+                  class="w-full h-10 px-3 bg-white/5 border border-white/10 text-white font-rajdhani text-base focus:outline-none focus:border-pale-gold/50 transition-colors"
+                />
+              </div>
+              <div class="flex h-12 border-t border-pale-gold/20">
+                <button
+                  onClick={() => setSetPasswordUser(null)}
+                  disabled={adminLoading()}
+                  class="flex-1 font-orbitron text-[0.7rem] text-white/40 uppercase tracking-[0.2em] hover:text-white/70 hover:bg-white/5 transition-all duration-200 disabled:opacity-50 border-r border-pale-gold/20"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSetPassword}
+                  disabled={adminLoading() || !newPassword().trim()}
+                  class="flex-1 font-orbitron text-[0.7rem] text-pale-gold uppercase tracking-[0.2em] hover:bg-pale-gold/10 hover:[text-shadow:0_0_8px_rgba(212,175,55,0.5)] transition-all duration-200 disabled:opacity-50"
+                >
+                  {adminLoading() ? '...' : 'Set'}
+                </button>
+              </div>
+            </div>
+          </div>
         </Show>
 
         {/* Admin confirm dialogs */}

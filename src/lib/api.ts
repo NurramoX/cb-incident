@@ -465,10 +465,11 @@ export function isAdmin(): boolean {
   }
 }
 
-export async function adminGenerateResetLink(userId: string): Promise<ApiResponse<{ action_link: string }>> {
-  return callAuthenticatedEdgeFunction<{ action_link: string }>('admin', 'POST', {
-    action: 'reset-password',
+export async function adminSetPassword(userId: string, password: string): Promise<ApiResponse<{ message: string }>> {
+  return callAuthenticatedEdgeFunction<{ message: string }>('admin', 'POST', {
+    action: 'set-password',
     userId,
+    password,
   })
 }
 
@@ -476,6 +477,12 @@ export async function adminDeleteUser(userId: string): Promise<ApiResponse<{ mes
   return callAuthenticatedEdgeFunction<{ message: string }>('admin', 'POST', {
     action: 'delete-user',
     userId,
+  })
+}
+
+export async function adminFetchEmails(): Promise<ApiResponse<{ emails: Record<string, string> }>> {
+  return callAuthenticatedEdgeFunction<{ emails: Record<string, string> }>('admin', 'POST', {
+    action: 'list-emails',
   })
 }
 
