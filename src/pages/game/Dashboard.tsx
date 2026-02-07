@@ -1,7 +1,12 @@
-import { createSignal, onMount, For, Show } from 'solid-js'
+import { createSignal, onMount, onCleanup, For, Show } from 'solid-js'
+import { Timeline, animate, splitText, stagger } from 'animejs'
 import { useNavigate, A } from '@solidjs/router'
 import { fetchProfiles, fetchTeams, fetchBattles, setBattleResult, lockBattleResult, isAuthenticated, getCurrentUserId, isAdmin, adminGenerateResetLink, adminDeleteUser, adminDeleteTeam, Profile, Team, Battle } from '../../lib/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import Countdown from '../../components/Countdown'
+
+const EVENT_TIME = new Date('2026-02-07T20:30:00').getTime()
+const RESULTS_TIME = new Date('2026-02-07T22:30:00').getTime()
 
 type ViewMode = 'participants' | 'teams' | 'battles'
 
@@ -457,13 +462,166 @@ export default function Dashboard() {
 }
 
 function BattlesContent() {
+  // If already past event time, skip animation entirely
+  if (Date.now() >= EVENT_TIME) {
+    return <BattlesList />
+  }
+
+  const [showBattles, setShowBattles] = createSignal(false)
+
+  let triggerTextAnimation: (() => void) | undefined
+
+  const handleCountdownComplete = () => {
+    setShowBattles(true)
+  }
+
+  return (
+    <Show when={showBattles()} fallback={
+      <div class="w-full flex flex-col items-center justify-center py-16">
+        <AnimatedLock onComplete={() => triggerTextAnimation?.()} />
+        <AnimatedText onReady={(trigger) => { triggerTextAnimation = trigger }} onComplete={handleCountdownComplete} />
+      </div>
+    }>
+      <BattlesList />
+    </Show>
+  )
+}
+
+function AnimatedLock(props: { onComplete?: () => void }) {
+  let svgRef: SVGSVGElement | undefined
+  let tl: InstanceType<typeof Timeline> | undefined
+
+  onMount(() => {
+    if (!svgRef) return
+
+    const rect = svgRef.querySelector('rect')
+    const path = svgRef.querySelector('path')
+    if (!rect || !path) return
+
+    tl = new Timeline({
+      defaults: { ease: 'inOutExpo' },
+      onComplete: () => props.onComplete?.(),
+    })
+
+    // Trace the lock shape
+    tl.add(rect, {
+      strokeDashoffset: [58, 0],
+      duration: 1200,
+    })
+
+    tl.add(path, {
+      strokeDashoffset: [26, 0],
+      duration: 800,
+    }, '-=400')
+  })
+
+  onCleanup(() => {
+    tl?.pause()
+  })
+
+  return (
+    <div class="relative w-20 h-20 flex items-center justify-center">
+      <svg
+        ref={svgRef}
+        xmlns="http://www.w3.org/2000/svg"
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="text-pale-gold filter-[drop-shadow(0_0_12px_rgba(212,175,55,0.7))_drop-shadow(0_0_30px_rgba(212,175,55,0.4))]"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" style={{ "stroke-dasharray": "58", "stroke-dashoffset": "58" }} />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" style={{ "stroke-dasharray": "26", "stroke-dashoffset": "26" }} />
+      </svg>
+    </div>
+  )
+}
+
+function AnimatedText(props: { onReady?: (trigger: () => void) => void; onComplete?: () => void }) {
+  let containerRef: HTMLDivElement | undefined
+  let labelRef: HTMLSpanElement | undefined
+
+  const startAnimation = () => {
+    if (!containerRef || !labelRef) return
+
+    // Make container visible
+    containerRef.style.opacity = '1'
+
+    // Split the label text into characters
+    const split = splitText(labelRef, { chars: true })
+
+    // Set initial state for chars (hidden)
+    split.chars.forEach((char) => {
+      ;(char as HTMLElement).style.opacity = '0'
+      ;(char as HTMLElement).style.transform = 'translateY(10px)'
+    })
+
+    // Animate characters with stagger
+    animate(split.chars, {
+      opacity: 1,
+      translateY: 0,
+      delay: stagger(40),
+      duration: 400,
+      ease: 'outQuad',
+    })
+
+    // Fade in the timer
+    const timer = containerRef.querySelector('.countdown-timer')
+    if (timer) {
+      animate(timer, {
+        opacity: [0, 1],
+        translateY: [15, 0],
+        duration: 500,
+        delay: 200,
+        ease: 'outQuad',
+      })
+    }
+  }
+
+  onMount(() => {
+    props.onReady?.(startAnimation)
+  })
+
+  return (
+    <div ref={containerRef} class="mt-6" style={{ opacity: 0 }}>
+      <div class="flex flex-col items-center gap-2 mt-2">
+        <span
+          ref={labelRef}
+          class="font-orbitron text-[0.55rem] text-white/40 tracking-[0.2em] uppercase"
+        >
+          Battles begin in
+        </span>
+        <div class="countdown-timer" style={{ opacity: 0 }}>
+          <Countdown label="" size="large" onComplete={props.onComplete} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BattlesList() {
   const [battles, setBattles] = createSignal<Battle[]>([])
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal('')
   const [actionLoading, setActionLoading] = createSignal<string | null>(null)
   const [confirmLock, setConfirmLock] = createSignal<Battle | null>(null)
+  const [resultsOpen, setResultsOpen] = createSignal(Date.now() >= RESULTS_TIME)
 
   onMount(async () => {
+    // Poll until results time if not yet open
+    if (!resultsOpen()) {
+      const interval = setInterval(() => {
+        if (Date.now() >= RESULTS_TIME) {
+          setResultsOpen(true)
+          clearInterval(interval)
+        }
+      }, 1000)
+      onCleanup(() => clearInterval(interval))
+    }
     const result = await fetchBattles()
     if (result.error) {
       setError(result.error)
@@ -481,7 +639,6 @@ function BattlesContent() {
       setError(res.error)
       return
     }
-    // Refresh battles
     const refreshed = await fetchBattles()
     if (refreshed.data) setBattles(refreshed.data.battles)
   }
@@ -597,41 +754,47 @@ function BattlesContent() {
 
                 {/* Result controls */}
                 <Show when={!myLocked()}>
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                      <button
-                        onClick={() => handleSetResult(battle.id, 'won')}
-                        disabled={isLoading()}
-                        class={`px-2.5 py-1 rounded font-orbitron text-[0.6rem] uppercase tracking-[0.05em] border transition-all duration-200 disabled:opacity-40 ${
-                          myState() === 'won'
-                            ? 'bg-[rgba(0,100,0,0.3)] border-[#228B22] text-[#90EE90]'
-                            : 'bg-transparent border-white/10 text-white/30 hover:border-[#228B22] hover:text-[#90EE90]'
-                        }`}
-                      >
-                        Win
-                      </button>
-                      <button
-                        onClick={() => handleSetResult(battle.id, 'lost')}
-                        disabled={isLoading()}
-                        class={`px-2.5 py-1 rounded font-orbitron text-[0.6rem] uppercase tracking-[0.05em] border transition-all duration-200 disabled:opacity-40 ${
-                          myState() === 'lost'
-                            ? 'bg-blood-red/30 border-blood-red text-neon-red'
-                            : 'bg-transparent border-white/10 text-white/30 hover:border-blood-red hover:text-neon-red'
-                        }`}
-                      >
-                        Lose
-                      </button>
+                  <Show when={resultsOpen()} fallback={
+                    <div class="font-orbitron text-[0.5rem] text-white/25 uppercase tracking-[0.1em]">
+                      Battles unlock at 22:30
                     </div>
-                    <Show when={myState() !== 'pending'}>
-                      <button
-                        onClick={() => setConfirmLock(battle)}
-                        disabled={isLoading()}
-                        class="lock-glow px-2 py-1 rounded font-orbitron text-[0.55rem] uppercase tracking-[0.05em] text-pale-gold/70 hover:text-pale-gold transition-all duration-200 disabled:opacity-40"
-                      >
-                        Lock
-                      </button>
-                    </Show>
-                  </div>
+                  }>
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2.5">
+                        <button
+                          onClick={() => handleSetResult(battle.id, 'won')}
+                          disabled={isLoading()}
+                          class={`px-2.5 py-1 rounded font-orbitron text-[0.6rem] uppercase tracking-[0.05em] border transition-all duration-200 disabled:opacity-40 ${
+                            myState() === 'won'
+                              ? 'bg-[rgba(0,100,0,0.3)] border-[#228B22] text-[#90EE90]'
+                              : 'bg-transparent border-white/10 text-white/30 hover:border-[#228B22] hover:text-[#90EE90]'
+                          }`}
+                        >
+                          Win
+                        </button>
+                        <button
+                          onClick={() => handleSetResult(battle.id, 'lost')}
+                          disabled={isLoading()}
+                          class={`px-2.5 py-1 rounded font-orbitron text-[0.6rem] uppercase tracking-[0.05em] border transition-all duration-200 disabled:opacity-40 ${
+                            myState() === 'lost'
+                              ? 'bg-blood-red/30 border-blood-red text-neon-red'
+                              : 'bg-transparent border-white/10 text-white/30 hover:border-blood-red hover:text-neon-red'
+                          }`}
+                        >
+                          Lose
+                        </button>
+                      </div>
+                      <Show when={myState() !== 'pending'}>
+                        <button
+                          onClick={() => setConfirmLock(battle)}
+                          disabled={isLoading()}
+                          class="lock-glow px-2 py-1 rounded font-orbitron text-[0.55rem] uppercase tracking-[0.05em] text-pale-gold/70 hover:text-pale-gold transition-all duration-200 disabled:opacity-40"
+                        >
+                          Lock
+                        </button>
+                      </Show>
+                    </div>
+                  </Show>
                 </Show>
               </div>
             </div>

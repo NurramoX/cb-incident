@@ -4,6 +4,7 @@ import { animate } from 'animejs'
 interface CountdownProps {
   label: string
   size?: 'default' | 'large'
+  onComplete?: () => void
 }
 
 export default function Countdown(props: CountdownProps) {
@@ -14,9 +15,16 @@ export default function Countdown(props: CountdownProps) {
   const [minutes, setMinutes] = createSignal('00')
   const [seconds, setSeconds] = createSignal('00')
 
+  const [completed, setCompleted] = createSignal(false)
+
   const updateCountdown = () => {
     const now = Date.now()
     const diff = Math.max(0, eventDate - now)
+
+    if (diff === 0 && !completed()) {
+      setCompleted(true)
+      props.onComplete?.()
+    }
 
     const d = Math.floor(diff / 86400000)
     const h = Math.floor((diff % 86400000) / 3600000)
